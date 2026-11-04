@@ -1,0 +1,2592 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Territoires — prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #e6ebef;
+  --surface: #f7f9fa;
+  --ink: #14202b;
+  --muted: #5d6b78;
+  --line: #cfd8df;
+  --board: #eef2f5;
+  --grid: #d3dce3;
+  --accent: #1f4e5f;
+  --accent-ink: #ffffff;
+  --ok: #1fa971;
+  --ko: #e5484d;
+  --radius: 10px;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #101419;
+    --surface: #1a2027;
+    --ink: #e8edf1;
+    --muted: #93a1ad;
+    --line: #2d3741;
+    --board: #1f262e;
+    --grid: #2d3741;
+    --accent: #7fc4d6;
+    --accent-ink: #0c1317;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101419;
+  --surface: #1a2027;
+  --ink: #e8edf1;
+  --muted: #93a1ad;
+  --line: #2d3741;
+  --board: #1f262e;
+  --grid: #2d3741;
+  --accent: #7fc4d6;
+  --accent-ink: #0c1317;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+*, *::before, *::after { box-sizing: inherit; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+h1, h2 { font-family: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif; margin: 0; letter-spacing: -0.02em; }
+button { font: inherit; color: inherit; }
+kbd {
+  font: inherit; font-size: 11px; padding: 0 5px; border: 1px solid var(--line);
+  border-radius: 4px; color: var(--muted); background: var(--bg);
+}
+
+#app { max-width: 1280px; margin: 0 auto; padding: 16px; }
+
+/* ---------- Écran de démarrage ---------- */
+#setup { max-width: 520px; margin: 6vh auto 0; }
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 24px;
+}
+#setup h1 { font-size: 40px; font-weight: 700; line-height: 1.05; }
+.lead { color: var(--muted); margin: 8px 0 24px; }
+fieldset { border: 0; padding: 0; margin: 0 0 20px; }
+legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
+.seg { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg label { position: relative; flex: 1 1 0; min-width: 80px; }
+.seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.seg span {
+  display: block; text-align: center; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--bg); font-weight: 500;
+}
+.names { display: grid; gap: 8px; }
+.nm { display: flex; align-items: center; gap: 10px; }
+.nm .sw { width: 22px; height: 22px; border-radius: 6px; flex: none; }
+.nm input {
+  flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg); color: var(--ink); font: inherit;
+}
+.nm input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.nm select { padding: 9px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; max-width: 46%; }
+.seg span small { display: block; font-weight: 400; font-size: 12px; opacity: .8; }
+.seg input:checked + span { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+  padding: 9px 14px; cursor: pointer; font-weight: 500;
+}
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn:focus-visible, .piece:focus-visible, .choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); width: 100%; padding: 12px; font-size: 16px; }
+.btn.armed { border-color: var(--ko); color: var(--ko); }
+
+details.rules { margin-top: 20px; color: var(--muted); }
+details.rules summary { cursor: pointer; color: var(--ink); font-weight: 500; }
+details.rules ul { padding-left: 18px; margin: 10px 0 0; }
+details.rules li { margin-bottom: 4px; }
+
+/* ---------- Jeu ---------- */
+#game { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.board-col { flex: 1 1 420px; min-width: 0; }
+.board-box { display: flex; justify-content: center; }
+#board {
+  display: block; border: 1px solid var(--line); border-radius: 6px;
+  touch-action: none; cursor: crosshair; background: var(--board);
+}
+#hint { min-height: 24px; margin-top: 10px; text-align: center; color: var(--muted); font-weight: 500; }
+#hint.ok { color: var(--ok); }
+#hint.ko { color: var(--ko); }
+
+.panel { flex: 0 0 320px; width: 320px; max-width: 100%; display: flex; flex-direction: column; gap: 14px; }
+@media (max-width: 760px) { .panel { flex: 1 1 100%; width: 100%; } }
+.block { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.block h2 { font-size: 15px; font-weight: 600; margin-bottom: 10px; letter-spacing: 0; }
+
+#banner { display: flex; align-items: center; gap: 12px; }
+#banner .dot { width: 22px; height: 22px; border-radius: 6px; flex: none; }
+#banner b { font-family: "Bricolage Grotesque", sans-serif; font-size: 22px; letter-spacing: -0.02em; line-height: 1.1; display: block; }
+#banner small { color: var(--muted); display: block; }
+#bannerTime { font-variant-numeric: tabular-nums; }
+
+.pieces { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+.piece:disabled { opacity: .5; cursor: default; }
+.piece {
+  background: var(--bg); border: 2px solid var(--line); border-radius: 8px; padding: 10px 6px 8px;
+  cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 104px;
+}
+.piece[aria-pressed="true"] { border-color: var(--accent); background: var(--surface); }
+.piece .mini { flex: 1; display: grid; gap: 1px; align-content: center; justify-content: center; }
+.piece .mini i { width: var(--s, 10px); height: var(--s, 10px); border-radius: 2px; display: block; }
+.piece .lbl { font-size: 13.5px; font-weight: 600; }
+.piece .pt { font-size: 12px; color: var(--muted); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.row .btn { flex: 1 1 auto; }
+.check select { margin-left: auto; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; }
+.check { display: flex; gap: 8px; align-items: center; margin-top: 10px; color: var(--muted); cursor: pointer; }
+.keys { color: var(--muted); font-size: 13px; margin-top: 10px; }
+
+.pl { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 2px solid transparent; border-radius: 8px; }
+.pl + .pl { margin-top: 4px; }
+.pl.current { border-color: var(--accent); background: var(--bg); }
+.pl .dot { width: 16px; height: 16px; border-radius: 4px; flex: none; }
+.pl .who { flex: 1; min-width: 0; }
+.pl .who b { font-weight: 600; }
+.pl .force { display: inline-block; margin-left: 8px; padding: 1px 9px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 13px; }
+.pl .who small { display: block; color: var(--muted); font-size: 12.5px; }
+.pl .pts { font-family: "Bricolage Grotesque", sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.pl.blocked .who b { text-decoration: line-through; text-decoration-thickness: 1px; opacity: .7; }
+
+#log { list-style: none; padding: 0; margin: 0; max-height: 190px; overflow-y: auto; font-size: 13.5px; }
+#log li { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+#log li:last-child { border-bottom: 0; }
+#log .dot { width: 8px; height: 8px; border-radius: 2px; margin-top: 7px; flex: none; }
+#log .evt { font-weight: 500; }
+
+/* ---------- Fenêtres (fin de partie, combat, recrutement) ---------- */
+.modal {
+  position: fixed; inset: 0; background: rgba(8, 12, 16, .55); display: grid; place-items: center;
+  padding: 16px; z-index: 10;
+}
+.modal .card { width: min(480px, 100%); max-height: 92vh; overflow: auto; }
+.modal h2 { font-size: 30px; font-weight: 700; margin-bottom: 4px; }
+.modal ol { list-style: none; padding: 0; margin: 16px 0; }
+.modal li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.modal li .dot { width: 14px; height: 14px; border-radius: 4px; }
+.modal li .who { flex: 1; }
+.modal li small { display: block; color: var(--muted); }
+.modal li .pts { font-family: "Bricolage Grotesque", sans-serif; font-size: 24px; font-weight: 700; }
+.modal .row .btn.primary { width: auto; font-size: 15px; padding: 10px 14px; }
+@media (prefers-reduced-motion: no-preference) {
+  .modal .card { animation: pop .18s ease-out; }
+  @keyframes pop { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+}
+
+.choices { display: grid; gap: 10px; margin-top: 16px; }
+.choice {
+  text-align: left; padding: 14px 16px; border: 2px solid var(--line); border-radius: 10px;
+  background: var(--bg); cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+}
+.choice:hover { border-color: var(--accent); }
+.choice b { font-family: "Bricolage Grotesque", sans-serif; font-size: 22px; letter-spacing: -0.02em; }
+.choice span { color: var(--muted); }
+
+.duel { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 12px 0; }
+.duel-h { font-weight: 600; margin-bottom: 8px; }
+.vs { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.side { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.side .dot { width: 12px; height: 12px; border-radius: 3px; }
+.roll { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--muted); }
+.die {
+  display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 8px;
+  border: 3px solid var(--c); background: var(--bg); color: var(--ink);
+  font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 24px;
+}
+.tie-msg { margin-top: 12px; font-weight: 600; }
+.dice-row { display: flex; justify-content: space-around; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+.dcol { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.dice-row .die { width: 60px; height: 60px; font-size: 32px; border-radius: 10px; }
+.warn { margin-top: 10px; color: var(--ko); font-weight: 600; }
+.res { margin-top: 10px; font-weight: 600; visibility: hidden; }
+.res.show { visibility: visible; }
+.toast {
+  position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600;
+  z-index: 20; max-width: calc(100% - 24px); text-align: center; pointer-events: none;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== Démarrage ===== -->
+  <section id="setup" class="card">
+    <h1>Territoires</h1>
+    <p class="lead">Prototype jouable. Tour par tour, sur un seul écran : les joueurs se passent la souris. Chaque couleur peut aussi être jouée par l'ordinateur.</p>
+
+    <fieldset>
+      <legend>Taille du plateau</legend>
+      <div class="seg">
+        <label><input type="radio" name="size" value="20" checked><span>20 × 20<small>partie courte</small></span></label>
+        <label><input type="radio" name="size" value="30"><span>30 × 30<small>partie moyenne</small></span></label>
+        <label><input type="radio" name="size" value="60"><span>60 × 60<small>partie longue, idéale à 4</small></span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Nombre de joueurs</legend>
+      <div class="seg">
+        <label><input type="radio" name="players" value="2" checked><span>2</span></label>
+        <label><input type="radio" name="players" value="3"><span>3</span></label>
+        <label><input type="radio" name="players" value="4"><span>4</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Prénoms <span style="font-weight:400;color:var(--muted)">(facultatif : sans prénom, la couleur sert de nom)</span></legend>
+      <div class="names" id="names">
+        <div class="nm"><span class="sw" style="background:#f76b15"></span><input type="text" maxlength="16" placeholder="Orange" autocomplete="off" aria-label="Prénom du joueur Orange"><select class="kind" aria-label="Type de joueur"><option value="">Humain</option><option value="easy">Ordinateur (facile)</option><option value="medium">Ordinateur (moyen)</option></select></div>
+        <div class="nm"><span class="sw" style="background:#3e63dd"></span><input type="text" maxlength="16" placeholder="Bleu" autocomplete="off" aria-label="Prénom du joueur Bleu"><select class="kind" aria-label="Type de joueur"><option value="">Humain</option><option value="easy">Ordinateur (facile)</option><option value="medium">Ordinateur (moyen)</option></select></div>
+        <div class="nm"><span class="sw" style="background:#8e4ec6"></span><input type="text" maxlength="16" placeholder="Violet" autocomplete="off" aria-label="Prénom du joueur Violet"><select class="kind" aria-label="Type de joueur"><option value="">Humain</option><option value="easy">Ordinateur (facile)</option><option value="medium">Ordinateur (moyen)</option></select></div>
+        <div class="nm"><span class="sw" style="background:#f2c200"></span><input type="text" maxlength="16" placeholder="Jaune" autocomplete="off" aria-label="Prénom du joueur Jaune"><select class="kind" aria-label="Type de joueur"><option value="">Humain</option><option value="easy">Ordinateur (facile)</option><option value="medium">Ordinateur (moyen)</option></select></div>
+      </div>
+    </fieldset>
+
+    <button id="start" class="btn primary">Lancer la partie</button>
+
+    <details class="rules">
+      <summary>Rappel des règles</summary>
+      <ul>
+        <li>Blocs en nombre illimité, dont la valeur est la surface : <b>Bloc</b> 1×1 (1 point), <b>Base</b> 2×2 (4 points), <b>Village</b> 3×3 (9 points). À partir du tour 15, la <b>Forteresse</b> 2×4 (8 points) devient disponible.</li>
+        <li><b>Première pièce</b> : obligatoirement un Village 3×3 sur son coin de départ. C'est la <b>Capitale</b> (repérée par une étoile). Si elle est prise par un adversaire, le joueur est éliminé. À 2 joueurs, la partie s'arrête alors.</li>
+        <li>Ensuite, chaque pièce doit toucher un de ses blocs, par un côté ou par un coin. Pas de superposition.</li>
+        <li><b>Passer son tour</b> : 3 tours de suite sans poser de pièce, et le joueur est éliminé. Un joueur qui ne peut plus rien poser se voit proposer de quitter la partie. Ses blocs restent sur le plateau : les autres joueurs qui posent un bloc contre eux les prennent sans combattre.</li>
+        <li><b>Armée</b> : après ses 3 premiers blocs posés, puis tous les 3 blocs, le joueur recrute un personnage. Le <b>soldat</b> donne +1 en attaque et +1 en défense. Le <b>villageois</b> donne +2 en défense seulement ; chaque villageois permet aussi d'agrandir un côté de ses blocs (avec 1 villageois : 1×2, 2×4, 3×6 et 4×4 pour la Forteresse ; avec 2 villageois : 1×3, 2×6, etc.).</li>
+        <li><b>Archer</b> : chaque Forteresse possédée ajoute un archer, +1 en attaque. De plus, chaque Forteresse peut tirer comme un canon (même portée), une fois par tour, avec le bouton « Tirer ». Une Forteresse capturée devient un simple bloc (seuls ses points comptent) : elle perd son archer et son tir, et son ancien propriétaire perd l'archer. Si le joueur qui l'avait posée la reprend, elle redevient une Forteresse (archer et tir rétablis).</li>
+        <li><b>Cavalier</b> : tous les 6 tours, le joueur reçoit un cavalier (+1 en attaque). Il part du centre de la Capitale et se déplace de 3 cases au plus, uniquement sur les cases de sa couleur (bouton « Cavalier »). Il peut aussi attaquer un bloc adverse à 3 cases au plus : une seule action par tour (déplacement ou attaque). Si sa case est prise, il est perdu.</li>
+        <li><b>Combat</b> : poser un bloc contre un bloc adverse (côté ou coin) déclenche un combat. La force d'attaque de celui qui pose (soldats, archers, cavaliers) est comparée à la défense de l'adversaire (soldats, villageois). À égalité, chacun lance un dé. Le perdant cède le bloc collé, qui change de couleur.</li>
+        <li id="ruleChest"></li>
+        <li id="ruleCannon"></li>
+        <li><b>Ordinateur</b> : chaque couleur peut être jouée par un humain ou par l'ordinateur (niveau facile ou moyen). L'ordinateur pose, tire, déplace ses cavaliers, recrute et lance ses dés tout seul.</li>
+        <li>Le score est la valeur des blocs que l'on possède (le canon vaut 1 point).</li>
+        <li>La partie s'arrête quand il reste moins de deux joueurs capables de jouer.</li>
+      </ul>
+    </details>
+  </section>
+
+  <!-- ===== Partie ===== -->
+  <section id="game" hidden>
+    <div class="board-col" id="boardCol">
+      <div class="board-box"><canvas id="board" aria-label="Plateau de jeu"></canvas></div>
+      <div id="hint">Survolez le plateau pour voir où poser la pièce.</div>
+    </div>
+
+    <aside class="panel">
+      <div class="block" id="banner">
+        <span class="dot" id="bannerDot"></span>
+        <div><b id="bannerName"></b><small id="bannerSub"></small><small id="bannerRec"></small><small id="bannerTime"></small><small id="bannerWarn" style="color:var(--ko);font-weight:600"></small></div>
+      </div>
+
+      <div class="block">
+        <h2>Bloc à poser</h2>
+        <div class="pieces" id="pieces"></div>
+        <div class="row">
+          <button class="btn" id="fire">Tirer</button>
+          <button class="btn" id="cav">Cavalier</button>
+          <button class="btn" id="rotate">Pivoter</button>
+          <button class="btn" id="pass">Passer son tour</button>
+        </div>
+        <label class="check">Taille des blocs <select id="mult" disabled><option value="1">Normale</option></select></label>
+        <label class="check"><input type="checkbox" id="help" checked> Montrer les cases où je peux poser</label>
+        <label class="check"><input type="checkbox" id="sound" checked> Sons</label>
+        <div class="keys"><kbd>1</kbd> à <kbd>5</kbd> choisir le bloc · <kbd>R</kbd> pivoter · <kbd>D</kbd> agrandir · <kbd>T</kbd> tirer (canon, Forteresse) · <kbd>C</kbd> cavalier. Sur mobile : touchez pour placer l'aperçu, touchez encore pour poser.</div>
+      </div>
+
+      <div class="block">
+        <h2>Joueurs</h2>
+        <div id="scores"></div>
+      </div>
+
+      <div class="block">
+        <h2>Journal</h2>
+        <ul id="log"></ul>
+      </div>
+
+      <div class="row" style="margin-top:0">
+        <button class="btn" id="finish">Terminer la partie</button>
+        <button class="btn" id="menu">Menu</button>
+      </div>
+    </aside>
+  </section>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<!-- ===== Coffre ouvert ===== -->
+<div class="modal" id="chestPop" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="chestTitle">
+    <h2 id="chestTitle">Coffre ouvert !</h2>
+    <div id="chestBody"></div>
+    <div class="row">
+      <button class="btn primary" id="chestNext">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Cavalier ===== -->
+<div class="modal" id="cavPop" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="cavTitle">
+    <h2 id="cavTitle">Cavalier</h2>
+    <div id="cavBody"></div>
+    <div class="row">
+      <button class="btn primary" id="cavNext">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Joueur bloqué ===== -->
+<div class="modal" id="stuck" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="stuckTitle">
+    <h2 id="stuckTitle">Plus aucun coup possible</h2>
+    <p id="stuckSub" style="color:var(--muted);margin:6px 0 0"></p>
+    <div class="choices">
+      <button class="choice" id="stuckQuit"><b>Quitter la partie</b><span>Vous êtes éliminé tout de suite.</span></button>
+      <button class="choice" id="stuckPass"><b>Passer mon tour</b><span id="stuckPassSub"></span></button>
+      <button class="choice" id="stuckPlay" hidden><b>Jouer mon tour</b><span>Pour tirer (canon, Forteresse) avant de passer.</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Recrutement ===== -->
+<div class="modal" id="recruit" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="recTitle">
+    <h2 id="recTitle">Recrutement</h2>
+    <div id="recSub" style="color:var(--muted)"></div>
+    <div class="choices">
+      <button class="choice" id="recGuard"><b>Soldat</b><span>+1 en attaque et +1 en défense.</span></button>
+      <button class="choice" id="recVill"><b>Villageois</b><span>+2 en défense, et permet d'agrandir un côté de vos blocs.</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Combat ===== -->
+<div class="modal" id="combat" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="combatTitle">
+    <h2 id="combatTitle">Combat !</h2>
+    <div id="combatBody"></div>
+    <div class="row">
+      <button class="btn primary" id="combatNext" disabled>Continuer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Fin de partie ===== -->
+<div class="modal" id="modal" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Partie terminée</h2>
+    <div id="modalSub" style="color:var(--muted)"></div>
+    <div id="modalTime" style="color:var(--muted);margin-top:2px"></div>
+    <ol id="ranking"></ol>
+    <div class="row">
+      <button class="btn primary" id="again">Rejouer</button>
+      <button class="btn" id="toMenu">Menu</button>
+      <button class="btn" id="viewBoard">Voir le plateau</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =====================================================================
+     RÉGLAGES — tout ce qu'on voudra ajuster se trouve ici
+     ===================================================================== */
+  const CONFIG = {
+    CHEST_BONUS: 0,              // points par coffre ouvert (0 : les coffres ne donnent que des unités)
+    CHEST_CANONS: [1, 1],        // contenu en canons de chaque coffre d'un joueur (ici : 1 canon par coffre)
+    CHEST_VILLAGERS: 0,          // villageois offerts en plus par chaque coffre
+    CHESTS_PER_PLAYER: 2,        // coffres par joueur
+    CHEST_MIN_FROM_CORNER: 0.40, // distance mini (x taille du plateau) entre un coffre et N'IMPORTE QUEL coin de départ
+    CHEST_MAX_FROM_OWN: 0.95,    // distance maxi (x taille) entre un coffre et le coin de son propriétaire
+    CHEST_MIN_BETWEEN: 0.20,     // distance mini (x taille) entre deux coffres
+    RECRUIT_FIRST: 4,            // tour de chaque joueur où a lieu le 1er recrutement (après 3 blocs posés)
+    RECRUIT_EVERY: 3,            // puis un recrutement tous les N tours
+    GUARD_ATTACK: 1,             // force en attaque d'un soldat
+    GUARD_DEFENSE: 1,            // force en défense d'un soldat
+    ARCHER_ATTACK: 1,            // force en attaque d'un archer (1 archer par Forteresse possédée)
+    VILLAGER_DEFENSE: 2,         // force en défense d'un villageois (aucune attaque)
+    CAVALRY_ATTACK: 1,           // force en attaque d'un cavalier
+    CAVALRY_EVERY: 6,            // un cavalier offert tous les N tours de chaque joueur
+    CAVALRY_MOVE: 3,             // déplacement d'un cavalier (cases, uniquement sur les cases de sa couleur)
+    CAVALRY_REACH: 3,            // portée d'attaque d'un cavalier (cases)
+    CANNON_SIDE: { 20: 2, 30: 5, 60: 10 }, // côté du carré d'action du canon (centré sur lui), selon la taille du plateau
+    CANNON_BAN_MARGIN: 0,        // marge d'interdiction autour des Capitales adverses (0 : exactement la zone de tir du canon)
+    CANNON_RANGE_BONUS: 1,       // cases de portée supplémentaires pour toutes les tailles de plateau
+    CANNON_POINTS: 1,            // points rapportés par un canon posé
+    MAX_MISSED_TURNS: 3,         // tours de suite sans poser de pièce avant d'être éliminé
+    MIN_ACTIVE_PLAYERS: 2,       // la partie s'arrête dès qu'il reste moins de joueurs capables de jouer
+    UNLOCK_TURN: 15,             // tour à partir duquel la Forteresse 2×4 est disponible
+    DICE_SIDES: 6,               // dé de départage en cas d'égalité
+  };
+
+  const PLAYERS = [
+    { name: "Orange", color: "#f76b15", ink: "#ffffff" },
+    { name: "Bleu",   color: "#3e63dd", ink: "#ffffff" },
+    { name: "Violet", color: "#8e4ec6", ink: "#ffffff" },
+    { name: "Jaune",  color: "#f2c200", ink: "#2b2300" },
+  ];
+  PLAYERS.forEach((P) => { P.label = P.name; });   // nom de couleur par défaut ; P.name = prénom saisi
+
+  const VILLAGE = 2, CANNON = 4;
+  const PIECES = [
+    { name: "Bloc",       art: "un",  w: 1, h: 1 },
+    { name: "Base",       art: "une", w: 2, h: 2 },
+    { name: "Village",    art: "un",  w: 3, h: 3 },
+    { name: "Forteresse", art: "une", w: 2, h: 4, late: true },
+    { name: "Canon",      art: "un",  w: 1, h: 1, special: true },
+  ];
+
+  /* =====================================================================
+     ÉTAT
+     ===================================================================== */
+  let st = null;          // état de la partie
+  let sel = VILLAGE;      // pièce sélectionnée
+  let hover = null;       // case sous le curseur {x,y}
+  let rot = false;        // pièce pivotée ?
+  let pending = null;     // (tactile) ancre en attente de confirmation
+  let cell = 20, dpr = 1; // taille d'une case en px
+  let theme = {};
+  let lastW = 0;
+  let lastSetup = { N: 20, n: 2 };
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("board");
+  const ctx = canvas.getContext("2d");
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const deName = (n) => (/^[aeiouyàâäéèêëîïôöùûü]/i.test(n) ? "d'" + n : "de " + n);
+  const plural = (n, word) => `${n} ${word}${n > 1 ? "s" : ""}`;
+  const isBot = (p) => !!PLAYERS[p].bot;
+  const busy = () => !st || st.over || st.recruiting || st.stuck || !!st.combat || !!st.chestPopup || !!st.cavPopup || (isBot(st.cur) && !st.botRun);
+  const isRecruitTurn = (t) => t >= CONFIG.RECRUIT_FIRST && (t - CONFIG.RECRUIT_FIRST) % CONFIG.RECRUIT_EVERY === 0;
+  const archersOf = (p) => blocksOf(p).filter((b) => b.type === 3).length;     // 1 archer par Forteresse possédée
+  const cavalryOf = (p) => st.cav.filter((c) => c.owner === p).length;
+  const attackPower = (p) =>
+    st.guard[p] * CONFIG.GUARD_ATTACK + archersOf(p) * CONFIG.ARCHER_ATTACK + cavalryOf(p) * CONFIG.CAVALRY_ATTACK;
+  const defensePower = (p) => st.guard[p] * CONFIG.GUARD_DEFENSE + st.vill[p] * CONFIG.VILLAGER_DEFENSE;
+  function armyText(p, side) {
+    const parts = [];
+    if (st.guard[p]) parts.push(plural(st.guard[p], "soldat"));
+    if (side === "atk") {
+      if (archersOf(p)) parts.push(plural(archersOf(p), "archer"));
+      if (cavalryOf(p)) parts.push(plural(cavalryOf(p), "cavalier"));
+    } else if (st.vill[p]) parts.push(`${st.vill[p]} villageois`);
+    return parts.length ? parts.join(" + ") : "aucune unité";
+  }
+  function clearModes() { st.fireMode = false; st.cavMode = false; st.cavSel = null; }
+  const cannonSide = () => {
+    const s = CONFIG.CANNON_SIDE[st.N];
+    return s !== undefined ? s : Math.max(2, Math.round(st.N / 6));
+  };
+  const cannonRange = () => Math.floor(cannonSide() / 2) + CONFIG.CANNON_RANGE_BONUS;   // portée de chaque côté : le carré est centré sur le canon
+  const cannonZone = () => 2 * cannonRange() + 1;           // côté réel du carré d'action (3, 5 ou 11)
+
+  const cornersOf = (N) => [[0, 0], [N - 1, N - 1], [N - 1, 0], [0, N - 1]];
+  const ownerAt = (k) => (st.grid[k] ? st.blocks.get(st.grid[k]).owner : -1);
+  const isFirst = (p) => st.placed[p] === 0;
+  const aliveList = () => { const a = []; for (let p = 0; p < st.n; p++) if (!st.out[p]) a.push(p); return a; };
+
+  // tours terminés par un joueur (le tour en cours n'est pas compté)
+  const turnsPlayed = (p) => st.turnNo[p] - (!st.over && p === st.cur && !st.out[p] ? 1 : 0);
+
+  function blocksOf(p) { return [...st.blocks.values()].filter((b) => b.owner === p); }
+  function score(p) {
+    return blocksOf(p).reduce((s, b) => s + b.pts, 0) + CONFIG.CHEST_BONUS * st.opened[p];
+  }
+
+  function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+  function mix(h, target, a) {
+    const c = hexToRgb(h), d = hexToRgb(target);
+    return `rgb(${c.map((v, i) => Math.round(v + (d[i] - v) * a)).join(",")})`;
+  }
+
+  /* =====================================================================
+     LOGIQUE DE JEU
+     ===================================================================== */
+  function newGame(N, n) {
+    lastSetup = { N, n };
+    const start = Math.floor(Math.random() * n);   // premier joueur tiré au hasard
+    st = {
+      N, n,
+      grid: new Array(N * N).fill(0),     // id de bloc, 0 = vide
+      blocks: new Map(),                  // id -> {id, owner, type, x, y, w, h, pts, main?}
+      chests: [],
+      chestAt: new Map(),                 // index de case -> coffre
+      cur: start,
+      placed: Array(n).fill(0),
+      opened: Array(n).fill(0),
+      cannonWins: Array(n).fill(0),       // combats remportés grâce à un canon (tirs gagnants, canon posé gagnant)
+      wins: Array(n).fill(0),             // combats remportés
+      guard: Array(n).fill(0),            // soldats recrutés
+      vill: Array(n).fill(0),             // villageois recrutés
+      cannon: Array(n).fill(0),           // canons en réserve (à poser)
+      out: Array(n).fill(false),          // joueurs éliminés
+      elim: [],                           // ordre d'élimination
+      lastElim: null,
+      missed: Array(n).fill(0),           // tours de suite sans poser de pièce
+      fired: new Set(),                   // canons ayant déjà tiré ce tour
+      fireMode: false,
+      cavMode: false,                     // mode « cavalier » actif
+      cavSel: null,                       // cavalier sélectionné
+      cav: [],                            // cavaliers : {id, owner, x, y, acted}
+      cid: 1,
+      cavPopup: null,                     // info « X possède un cavalier » en attente
+      botSeq: 0,                          // ordinateur : numéro de l'action en cours
+      botHoldKey: "",
+      botHoldUntil: 0,
+      botRun: false,                      // vrai pendant que l'ordinateur exécute une action
+      botTurnKey: "",
+      botDoneSet: new Set(),
+      botActs: 0,
+      combatUI: null,                     // dés à lancer dans la fenêtre de combat
+      startTime: Date.now(),              // pour la durée de la partie
+      endTime: 0,
+      unlocked: false,                    // Forteresse 2×4 débloquée ?
+      chestPopup: null,                   // coffres ouverts en attente d'affichage
+      chestResume: false,
+      turnNo: Array(n).fill(0),           // nombre de tours démarrés par joueur
+      blocked: Array(n).fill(false),
+      over: false,
+      recruiting: false,
+      stuck: false,                       // fenêtre « plus aucun coup possible » ouverte
+      combat: null,
+      log: [],
+      pid: 1,
+      hints: [],
+    };
+    st.turnNo[start] = 1;
+    sel = VILLAGE; rot = false;
+    $("mult").value = "1";
+    placeChests();
+    st.hints = validCells(start);
+    hover = null; pending = null;
+    addLog(start, `La partie commence : ${PLAYERS[start].name} joue en premier.`, true);
+  }
+
+  function placeChests() {
+    const { N, n } = st;
+    const corners = cornersOf(N);
+    const cheb = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+    const minC = Math.round(N * CONFIG.CHEST_MIN_FROM_CORNER);
+    const maxOwn = Math.round(N * CONFIG.CHEST_MAX_FROM_OWN);
+    const minK = Math.round(N * CONFIG.CHEST_MIN_BETWEEN);
+
+    for (let p = 0; p < n; p++) {
+      const rewards = [...CONFIG.CHEST_CANONS].sort(() => Math.random() - 0.5);
+      for (let k = 0; k < CONFIG.CHESTS_PER_PLAYER; k++) {
+        let relax = 0;
+        for (let attempt = 0; ; attempt++) {
+          if (attempt > 0 && attempt % 400 === 0) relax++;   // on assouplit si le plateau est trop contraint
+          const x = 1 + Math.floor(Math.random() * (N - 2));
+          const y = 1 + Math.floor(Math.random() * (N - 2));
+          if (corners.some(([cx, cy]) => cheb(x, y, cx, cy) < minC - relax)) continue;
+          if (relax < 2 && cheb(x, y, corners[p][0], corners[p][1]) > maxOwn) continue;
+          if (st.chests.some((c) => cheb(x, y, c.x, c.y) < minK - relax)) continue;
+          const chest = { x, y, p, opened: false, cannons: rewards[k % rewards.length] };
+          st.chests.push(chest);
+          st.chestAt.set(y * N + x, chest);
+          break;
+        }
+      }
+    }
+  }
+
+  // Renvoie le joueur dont la Capitale (encore en jeu) est dans la zone de tir d'un canon posé en (x, y), sinon -1
+  function mainVillageNear(p, x, y) {
+    const R = cannonRange() + CONFIG.CANNON_BAN_MARGIN;
+    for (const b of st.blocks.values()) {
+      if (b.main === undefined || b.main === p || st.out[b.main]) continue;
+      const dx = Math.max(0, b.x - x, x - (b.x + b.w - 1));
+      const dy = Math.max(0, b.y - y, y - (b.y + b.h - 1));
+      if (Math.max(dx, dy) <= R) return b.main;
+    }
+    return -1;
+  }
+
+  // Valide la pose d'une pièce (x,y = coin haut-gauche, w×h). `type` : indice dans PIECES (facultatif).
+  function validate(p, x, y, w, h, type) {
+    const { N, grid, chestAt } = st;
+    if (x < 0 || y < 0 || x + w > N || y + h > N) return { ok: false, reason: "Hors du plateau." };
+    for (let j = y; j < y + h; j++) {
+      for (let i = x; i < x + w; i++) {
+        const k = j * N + i;
+        if (chestAt.has(k)) return { ok: false, reason: "Un coffre occupe cette case." };
+        if (grid[k]) return { ok: false, reason: "Case déjà occupée." };
+      }
+    }
+    // le canon se pose n'importe où, sans contact avec ses autres blocs,
+    // mais jamais à portée de la Capitale d'un adversaire
+    if (type === CANNON) {
+      const near = mainVillageNear(p, x, y);
+      if (near !== -1) return { ok: false, reason: `Interdit : trop près de la Capitale de ${PLAYERS[near].name} (le canon pourrait le viser).` };
+      return { ok: true };
+    }
+
+    if (isFirst(p)) {
+      if (w !== 3 || h !== 3) return { ok: false, reason: "Première pièce : obligatoirement un Village 3×3 (votre Capitale)." };
+      const [cx, cy] = cornersOf(N)[p];
+      if (cx >= x && cx < x + w && cy >= y && cy < y + h) return { ok: true };
+      return { ok: false, reason: "La Capitale doit couvrir votre coin de départ." };
+    }
+    // contact avec un de ses propres blocs (côté ou coin) = anneau autour de la pièce
+    for (let j = y - 1; j <= y + h; j++) {
+      for (let i = x - 1; i <= x + w; i++) {
+        if (i < 0 || j < 0 || i >= N || j >= N) continue;
+        if (i >= x && i < x + w && j >= y && j < y + h) continue;
+        if (ownerAt(j * N + i) === p) return { ok: true };
+      }
+    }
+    return { ok: false, reason: "Elle doit toucher un de vos blocs, par un côté ou un coin." };
+  }
+
+  // Cases où une pièce pourrait s'accrocher (pour l'aide visuelle) et test « a un coup possible ».
+  function validCells(p) {
+    const { N } = st, out = [];
+    if (isFirst(p)) {                       // premier coup : le Village 3×3 sur son coin
+      const [cx, cy] = cornersOf(N)[p];
+      const ax = cx === 0 ? 0 : N - 3, ay = cy === 0 ? 0 : N - 3;
+      if (validate(p, ax, ay, 3, 3).ok) out.push(cy * N + cx);
+      return out;
+    }
+    for (let y = 0; y < N; y++)
+      for (let x = 0; x < N; x++)
+        if (validate(p, x, y, 1, 1).ok) out.push(y * N + x);
+    return out;
+  }
+
+  function freeCellExists() {
+    for (let k = 0; k < st.grid.length; k++) if (!st.grid[k] && !st.chestAt.has(k)) return true;
+    return false;
+  }
+  // un joueur avec un canon en réserve peut toujours le poser s'il reste une case libre
+  const canPlay = (p, hints) => hints.length > 0 || (st.cannon[p] > 0 && freeCellExists());
+
+  // Blocs adverses touchés (côté ou coin) par une pièce : Map adversaire -> Set d'ids de blocs
+  function touchedOpponents(p, x, y, w, h) {
+    const found = new Map();
+    for (let j = y - 1; j <= y + h; j++) {
+      for (let i = x - 1; i <= x + w; i++) {
+        if (i < 0 || j < 0 || i >= st.N || j >= st.N) continue;
+        if (i >= x && i < x + w && j >= y && j < y + h) continue;
+        const id = st.grid[j * st.N + i];
+        if (!id) continue;
+        const o = st.blocks.get(id).owner;
+        if (o === p) continue;
+        if (!found.has(o)) found.set(o, new Set());
+        found.get(o).add(id);
+      }
+    }
+    return found;
+  }
+
+  function rollDie() { return 1 + Math.floor(Math.random() * CONFIG.DICE_SIDES); }
+
+  // Prépare un duel. winner = null : égalité, les joueurs lanceront le dé dans la fenêtre de combat.
+  // auto : l'adversaire est éliminé, ses blocs sont pris sans combat.
+  function makeDuel(p, opp, ids, fire, by) {
+    const auto = st.out[opp];
+    const g1 = attackPower(p), g2 = defensePower(opp);
+    let winner = null;
+    if (auto) winner = p;
+    else if (g1 !== g2) winner = g1 > g2 ? p : opp;
+    return {
+      attacker: p, defender: opp, g1, g2, guardsA: st.guard[p], guardsD: st.guard[opp],
+      rolls: [], winner, blocks: [...ids], auto, fire: !!fire,
+      by: by || (fire ? "cannon" : null),                 // "cannon" | "cav" | null (combat par pose)
+      detA: armyText(p, "atk"), detD: armyText(opp, "def"),
+      mainAtRisk: [...ids].some((id) => st.blocks.get(id).main === opp),
+    };
+  }
+  function planCombats(p, x, y, w, h) {
+    const duels = [];
+    for (const [opp, ids] of touchedOpponents(p, x, y, w, h)) duels.push(makeDuel(p, opp, ids, false));
+    return duels;
+  }
+
+  function eliminate(p, why) {
+    if (st.out[p]) return;
+    st.out[p] = true;
+    st.elim.push(p);
+    st.lastElim = { p, why };
+    clearModes();
+    addLog(p, `${PLAYERS[p].name} est éliminé : ${why}.`, true);
+    pruneCavalry();
+    toast(`${PLAYERS[p].name} est éliminé : ${why}`);
+    SFX.lost();
+  }
+
+  function applyCombats() {
+    const c = st.combat;
+    const { duels, p, id } = c;
+    const lost = new Set();
+    for (const d of duels) {
+      const A = PLAYERS[d.attacker].name, D = PLAYERS[d.defender].name;
+      if (!d.auto) {
+        st.wins[d.winner]++;
+        if (d.winner === d.attacker && (d.by === "cannon" || (id && st.blocks.get(id).type === CANNON))) st.cannonWins[d.winner]++;
+      }
+      if (d.winner === d.attacker) {
+        let n = 0;
+        for (const bid of d.blocks) {
+          const b = st.blocks.get(bid);
+          if (b.owner === d.defender) {
+            b.owner = p; n++;
+            if (b.main === d.defender) lost.add(d.defender);   // Capitale prise
+            if (b.type === 3) {                           // une Forteresse capturée devient un simple bloc
+              b.type = 0;
+              addLog(p, `${A} prend la Forteresse de ${D} : elle devient un simple bloc (plus d'archer, plus de tir).`, true);
+            } else if (b.type === 0 && b.fortOwner === p) {   // son créateur la reprend : elle redevient une Forteresse
+              b.type = 3;
+              addLog(p, `${A} reprend sa Forteresse : archer et tir rétablis.`, true);
+            }
+          }
+        }
+        addLog(p, d.auto ? `${A} prend ${plural(n, "bloc")} de ${D} sans combat.`
+          : d.fire ? `${d.by === "cav" ? "Charge" : "Tir"} : ${A} bat ${D} et prend ${plural(n, "bloc")}.`
+          : `Combat : ${A} bat ${D} et prend ${plural(n, "bloc")}.`, true);
+      } else if (d.fire) {
+        addLog(d.defender, `${d.by === "cav" ? "Charge manquée" : "Tir manqué"} : ${D} résiste à ${A}.`, true);
+      } else {
+        const nb = st.blocks.get(id);
+        if (nb.type === CANNON) {
+          addLog(d.defender, `Combat : ${D} bat ${A}, mais le canon reste à ${A}.`, true);
+        } else {
+          if (nb.owner === p) {
+            nb.owner = d.defender;
+            if (nb.main === p) lost.add(p);
+            if (nb.type === 3) {
+              nb.type = 0;
+              addLog(d.defender, `${D} prend la Forteresse de ${A} : elle devient un simple bloc (plus d'archer, plus de tir).`, true);
+            }
+          }
+          addLog(d.defender, `Combat : ${D} bat ${A} et prend le bloc posé.`, true);
+        }
+      }
+    }
+    st.combat = null;
+    for (const q of lost) eliminate(q, "sa Capitale a été prise");
+    pruneCavalry();
+    return c;
+  }
+
+  function placePiece(p, x, y, w, h, type) {
+    SFX.place();
+    const id = st.pid++;
+    const b = { id, owner: p, type, x, y, w, h, pts: type === CANNON ? CONFIG.CANNON_POINTS : w * h };
+    if (type === 3) b.fortOwner = p;                    // créateur de la Forteresse : s'il la reprend, elle le redevient
+    if (isFirst(p)) b.main = p;                         // le premier Village est la Capitale
+    st.blocks.set(id, b);
+    for (let j = y; j < y + h; j++)
+      for (let i = x; i < x + w; i++) st.grid[j * st.N + i] = id;
+    if (type === CANNON) st.cannon[p]--;
+    st.placed[p]++;
+    st.missed[p] = 0;
+    addLog(p, type === CANNON
+      ? `${PLAYERS[p].name} pose un canon.`
+      : `${PLAYERS[p].name} pose ${PIECES[type].art} ${PIECES[type].name} ${w}×${h}${b.main !== undefined ? " (Capitale)" : ""}.`);
+
+    if (type === 3) {
+      const msg = `${PLAYERS[p].name} gagne un archer (+${CONFIG.ARCHER_ATTACK} en attaque) : ${plural(archersOf(p), "archer")} en tout.`;
+      addLog(p, msg, true);
+      toast(msg);
+    }
+
+    const duels = planCombats(p, x, y, w, h);
+    if (!duels.length) { endOfAction(); return; }
+    st.combat = { duels, p, id, fire: false };
+    if (duels.every((d) => d.auto)) { applyCombats(); endOfAction(); return; }   // rien à jouer : tout est pris sans combat
+    hover = null;
+    renderAll();
+    showCombat();
+  }
+
+  /* ---------- Tir de canon ---------- */
+  // sources de tir : canons et Forteresses (une fois par tour chacun)
+  const availableShooters = (p) => blocksOf(p).filter((b) => (b.type === CANNON || b.type === 3) && !st.fired.has(b.id));
+  // la case visée `pos` est-elle dans le carré de portée R autour de la source (rectangle sx,sy de sw×sh cases) ?
+  function cellInReach(sx, sy, sw, sh, pos, R) {
+    const dx = Math.max(0, pos.x - (sx + sw - 1), sx - pos.x);
+    const dy = Math.max(0, pos.y - (sy + sh - 1), sy - pos.y);
+    return Math.max(dx, dy) <= R;
+  }
+
+  /* ---------- Cavalier ---------- */
+  const availableCav = (p) => st.cav.filter((c) => c.owner === p && !c.acted);
+  const cavAtCell = (k) => st.cav.find((c) => c.y * st.N + c.x === k);
+  const cavSelected = () => st.cav.find((c) => c.id === st.cavSel && c.owner === st.cur && !c.acted) || null;
+
+  // cases atteignables : jusqu'à CAVALRY_MOVE pas (8 directions), en ne passant que par ses propres cases
+  function cavReach(c) {
+    const N = st.N, start = c.y * N + c.x;
+    const dist = new Map([[start, 0]]);
+    const queue = [start];
+    while (queue.length) {
+      const k = queue.shift(), d = dist.get(k);
+      if (d >= CONFIG.CAVALRY_MOVE) continue;
+      const x = k % N, y = (k - x) / N;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+          const nk = ny * N + nx;
+          if (dist.has(nk) || ownerAt(nk) !== c.owner) continue;
+          dist.set(nk, d + 1);
+          queue.push(nk);
+        }
+      }
+    }
+    const out = new Set();
+    for (const k of dist.keys()) if (k !== start && !cavAtCell(k)) out.add(k);   // on ne s'arrête pas sur un autre cavalier
+    return out;
+  }
+  function cavTargetOk(c, t, pos) { return t.owner !== c.owner && cellInReach(c.x, c.y, 1, 1, pos, CONFIG.CAVALRY_REACH); }
+
+  // Donne un cavalier au joueur : il démarre au centre de sa Capitale (ou à la case libre la plus proche)
+  function grantCavalry(p) {
+    const mb = [...st.blocks.values()].find((b) => b.main === p && b.owner === p);
+    if (!mb) return;
+    const N = st.N;
+    const sx = mb.x + Math.floor(mb.w / 2), sy = mb.y + Math.floor(mb.h / 2);
+    const seen = new Set([sy * N + sx]);
+    const queue = [sy * N + sx];
+    let spot = null;
+    while (queue.length) {
+      const k = queue.shift();
+      if (!cavAtCell(k)) { spot = k; break; }
+      const x = k % N, y = (k - x) / N;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+        const nk = ny * N + nx;
+        if (seen.has(nk) || ownerAt(nk) !== p) continue;
+        seen.add(nk); queue.push(nk);
+      }
+    }
+    if (spot === null) return;
+    st.cav.push({ id: st.cid++, owner: p, x: spot % N, y: (spot - (spot % N)) / N, acted: false });
+    addLog(p, `${PLAYERS[p].name} reçoit un cavalier.`, true);
+    st.cavPopup = { p };
+  }
+
+  // un cavalier dont la case a été prise (ou dont le joueur est éliminé) est perdu
+  function pruneCavalry() {
+    for (const c of [...st.cav]) {
+      if (st.out[c.owner] || ownerAt(c.y * st.N + c.x) !== c.owner) {
+        st.cav.splice(st.cav.indexOf(c), 1);
+        if (st.cavSel === c.id) st.cavSel = null;
+        if (!st.out[c.owner]) addLog(c.owner, `Le cavalier de ${PLAYERS[c.owner].name} est perdu : sa case a été prise.`, true);
+      }
+    }
+  }
+
+  function showCavPopup() {
+    const p = st.cavPopup.p, P = PLAYERS[p];
+    $("cavTitle").textContent = `${P.name} possède un cavalier !`;
+    $("cavBody").innerHTML = `<div class="duel">
+      <div class="duel-h"><span class="dot" style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${P.color};margin-right:6px"></span>${P.name}</div>
+      <div style="font-size:44px;line-height:1">&#9822;</div>
+      <div style="font-weight:600;margin-top:6px">+${CONFIG.CAVALRY_ATTACK} en attaque · ${plural(cavalryOf(p), "cavalier")} en tout</div>
+      <div style="color:var(--muted);margin-top:8px">Il part du centre de la Capitale. Il se déplace de ${CONFIG.CAVALRY_MOVE} cases au plus, uniquement sur les cases de ${P.name}, et peut attaquer un bloc adverse à ${CONFIG.CAVALRY_REACH} cases au plus (une action par tour).</div></div>`;
+    $("cavPop").hidden = false;
+    SFX.unlock();
+    $("cavNext").focus();
+  }
+
+  function toggleCav() {
+    if (busy()) return;
+    if (!st.cavMode && !availableCav(st.cur).length) return;
+    const turnOn = !st.cavMode;
+    clearModes();
+    if (turnOn) {
+      st.cavMode = true;
+      const av = availableCav(st.cur);
+      st.cavSel = av.length === 1 ? av[0].id : null;
+    }
+    pending = null;
+    renderAll();
+  }
+
+  function tryCav(pos) {
+    if (busy() || !st.cavMode) return;
+    const N = st.N, k = pos.y * N + pos.x;
+    const here = cavAtCell(k);
+    if (here && here.owner === st.cur) {                       // sélection d'un de ses cavaliers
+      if (here.acted) { setHint("Ce cavalier a déjà agi ce tour.", "ko"); return; }
+      st.cavSel = here.id;
+      renderAll();
+      return;
+    }
+    const c = cavSelected();
+    if (!c) { setHint("Cliquez d'abord sur un de vos cavaliers.", "ko"); return; }
+    if (cavReach(c).has(k)) {                                   // déplacement
+      c.x = pos.x; c.y = pos.y; c.acted = true;
+      addLog(st.cur, `${PLAYERS[st.cur].name} déplace son cavalier.`);
+      SFX.place();
+      clearModes();
+      renderAll();
+      return;
+    }
+    const id = st.grid[k];
+    if (id) {                                                   // attaque à distance
+      const t = st.blocks.get(id);
+      if (t.owner === st.cur) { setHint("C'est un de vos blocs : visez un bloc adverse, ou une case verte pour vous déplacer.", "ko"); return; }
+      if (!cavTargetOk(c, t, pos)) { SFX.bad(); setHint(`Hors de portée du cavalier (${CONFIG.CAVALRY_REACH} cases).`, "ko"); return; }
+      c.acted = true;
+      clearModes();
+      SFX.clash();
+      const duel = makeDuel(st.cur, t.owner, [id], true, "cav");
+      st.combat = { duels: [duel], p: st.cur, id: null, fire: true };
+      if (duel.auto) { applyCombats(); afterFire(); return; }
+      hover = null;
+      renderAll();
+      showCombat();
+      return;
+    }
+    setHint(`Case non atteignable : le cavalier ne va que sur vos cases, à ${CONFIG.CAVALRY_MOVE} pas au plus.`, "ko");
+  }
+  // une source prête (canon ou Forteresse) a-t-elle la case visée dans son carré de portée ?
+  function shooterFor(p, pos) { return availableShooters(p).find((s) => cellInReach(s.x, s.y, s.w, s.h, pos, cannonRange())); }
+
+  function toggleFire() {
+    if (busy()) return;
+    if (!st.fireMode && !availableShooters(st.cur).length) return;
+    st.cavMode = false; st.cavSel = null;
+    st.fireMode = !st.fireMode;
+    pending = null;
+    renderAll();
+  }
+
+  function tryFire(pos) {
+    if (busy() || !st.fireMode) return;
+    const id = st.grid[pos.y * st.N + pos.x];
+    if (!id) { setHint("Visez un bloc adverse.", "ko"); return; }
+    const t = st.blocks.get(id);
+    if (t.owner === st.cur) { setHint("C'est un de vos blocs : visez un bloc adverse.", "ko"); return; }
+    const can = shooterFor(st.cur, pos);
+    if (!can) { SFX.bad(); setHint("Hors de portée de vos canons et Forteresses (ou ils ont déjà tiré ce tour).", "ko"); return; }
+    st.fired.add(can.id);
+    clearModes();
+    SFX.cannon();
+    const duel = makeDuel(st.cur, t.owner, [id], true, can.type === 3 ? "fort" : "cannon");
+    st.combat = { duels: [duel], p: st.cur, id: null, fire: true };
+    if (duel.auto) { applyCombats(); afterFire(); return; }
+    hover = null;
+    renderAll();
+    showCombat();
+  }
+
+  // Après un tir : le tour continue (on peut encore poser un bloc), sauf si la partie est finie
+  function afterFire() {
+    const gained = checkChests();
+    if (aliveList().length < 2) { endGame(lastElimReason()); return; }
+    if (gained.length) { showChestPopup(gained, true); return; }
+    renderAll();
+  }
+
+  /* ---------- Coffres ---------- */
+  // Un coffre s'ouvre quand l'un des blocs de son propriétaire le touche (côté ou coin).
+  // Renvoie la liste des coffres ouverts à cette occasion.
+  function checkChests() {
+    const gained = [];
+    for (const ch of st.chests) {
+      if (ch.opened || st.out[ch.p]) continue;
+      let touched = false;
+      for (let dy = -1; dy <= 1 && !touched; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const x = ch.x + dx, y = ch.y + dy;
+          if (x < 0 || y < 0 || x >= st.N || y >= st.N) continue;
+          if (ownerAt(y * st.N + x) === ch.p) { touched = true; break; }
+        }
+      }
+      if (touched) {
+        ch.opened = true;
+        st.opened[ch.p]++;
+        st.cannon[ch.p] += ch.cannons;
+        st.vill[ch.p] += CONFIG.CHEST_VILLAGERS;
+        gained.push({ p: ch.p, cannons: ch.cannons, villagers: CONFIG.CHEST_VILLAGERS });
+        addLog(ch.p, `${PLAYERS[ch.p].name} ouvre un coffre : ${plural(ch.cannons, "canon")}${CONFIG.CHEST_VILLAGERS ? ` et ${CONFIG.CHEST_VILLAGERS} villageois` : ""}.`, true);
+      }
+    }
+    return gained;
+  }
+
+  const describeCannon = () =>
+    `Le canon se pose où l'on veut, sans toucher ses blocs. Chaque tour, il peut tirer sur un bloc adverse situé dans le carré de ${cannonZone()}×${cannonZone()} cases qui l'entoure.`;
+
+  const cannonSvg = (col) => `<svg viewBox="0 0 64 40" width="56" height="35" aria-hidden="true">
+    <g transform="rotate(-18 28 18)"><rect x="8" y="10" width="42" height="14" rx="5" fill="#4b5563"/>
+    <rect x="14" y="10" width="8" height="14" fill="${col}"/><rect x="46" y="8" width="9" height="18" rx="3" fill="#374151"/></g>
+    <circle cx="26" cy="30" r="9" fill="#7a5230"/><circle cx="26" cy="30" r="3" fill="#d1d5db"/></svg>`;
+
+  function showChestPopup(gained, resume) {
+    st.chestPopup = gained;
+    st.chestResume = !!resume;
+    hover = null;
+    const body = $("chestBody");
+    body.innerHTML = "";
+    gained.forEach((g) => {
+      const P = PLAYERS[g.p];
+      const row = document.createElement("div");
+      row.className = "duel";
+      row.innerHTML = `<div class="duel-h"><span class="dot" style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${P.color};margin-right:6px"></span>${P.name} ouvre son coffre</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span>${cannonSvg(P.color).repeat(g.cannons)}</span>
+          <b style="font-family:'Bricolage Grotesque',sans-serif;font-size:26px;letter-spacing:-.02em">+${plural(g.cannons, "canon")}</b></div>
+        ${g.villagers ? `<div style="font-weight:600;margin-top:6px">+${g.villagers} villageois</div>` : ""}
+        <div style="color:var(--muted);margin-top:8px">${describeCannon()}</div>`;
+      body.appendChild(row);
+    });
+    $("chestTitle").textContent = gained.length > 1 ? "Coffres ouverts !" : "Coffre ouvert !";
+    $("chestPop").hidden = false;
+    SFX.chest();
+    renderAll();
+    $("chestNext").focus();
+  }
+  function closeChestPopup() {
+    if (!st || !st.chestPopup) return;
+    const resume = st.chestResume;
+    st.chestPopup = null;
+    $("chestPop").hidden = true;
+    if (resume) renderAll(); else nextTurn();
+  }
+  $("chestNext").addEventListener("click", closeChestPopup);
+
+  function endOfAction() {
+    const gained = checkChests();
+    if (gained.length && aliveList().length > 1) { showChestPopup(gained, false); return; }
+    nextTurn();
+  }
+
+  const lastElimReason = () => st.lastElim
+    ? `Fin de partie : ${PLAYERS[st.lastElim.p].name} est éliminé (${st.lastElim.why}).`
+    : "Fin de partie.";
+
+  /* ---------- Tours ---------- */
+  function fixSelection() {
+    if (isFirst(st.cur)) { sel = VILLAGE; return; }
+    if (!pieceOpen(sel)) sel = 1;
+  }
+
+  function nextTurn() {
+    clearModes();
+    st.fired = new Set();
+    if (aliveList().length < 2) { endGame(lastElimReason()); return; }
+
+    // qui peut encore jouer ?
+    const hintsBy = [];
+    let active = 0;
+    for (const p of aliveList()) {
+      hintsBy[p] = validCells(p);
+      const nowBlocked = !canPlay(p, hintsBy[p]);
+      if (nowBlocked && !st.blocked[p]) addLog(p, `${PLAYERS[p].name} ne peut plus jouer.`, true);
+      st.blocked[p] = nowBlocked;
+      if (!nowBlocked) active++;
+    }
+    if (active < CONFIG.MIN_ACTIVE_PLAYERS) { endGame("Fin de partie : plus assez de joueurs peuvent jouer."); return; }
+
+    // joueur suivant (les éliminés sont ignorés)
+    do { st.cur = (st.cur + 1) % st.n; } while (st.out[st.cur]);
+    st.stuck = st.blocked[st.cur];
+    st.hints = hintsBy[st.cur];
+    pending = null;
+    $("mult").value = "1";
+    st.turnNo[st.cur]++;
+    st.cav.forEach((c) => { c.acted = false; });
+    if (st.turnNo[st.cur] >= CONFIG.CAVALRY_EVERY && st.turnNo[st.cur] % CONFIG.CAVALRY_EVERY === 0) grantCavalry(st.cur);
+    if (!st.unlocked && Math.max(...st.turnNo) >= CONFIG.UNLOCK_TURN) {
+      st.unlocked = true;
+      const F = PIECES.find((P) => P.late);
+      const msg = `Nouveau bloc disponible : ${F.name} ${F.w}×${F.h} (${F.w * F.h} points)`;
+      addLog(st.cur, msg + ".", true);
+      toast(msg);
+      SFX.unlock();
+    }
+    fixSelection();
+    st.recruiting = isRecruitTurn(st.turnNo[st.cur]);
+    renderAll();
+    if (st.recruiting) showRecruit();
+    else if (st.cavPopup) showCavPopup();
+    else if (st.stuck) showStuck();
+  }
+
+  // Joueur qui ne peut plus rien poser : il peut quitter la partie, ou passer (éliminé après 3 tours de suite)
+  function showStuck() {
+    if (isBot(st.cur)) return;                  // l'ordinateur décide sans fenêtre
+    const p = st.cur, m = st.missed[p], left = CONFIG.MAX_MISSED_TURNS - m;
+    $("stuckTitle").textContent = `${PLAYERS[p].name}, plus aucun coup possible`;
+    $("stuckSub").textContent =
+      `Vous ne pouvez plus rien poser sur le plateau. Vous pouvez quitter la partie, ou passer votre tour : si vous passez encore ${plural(left, "tour")} d'affilée, vous êtes éliminé.`;
+    $("stuckPassSub").textContent = `Tours passés d'affilée : ${m}/${CONFIG.MAX_MISSED_TURNS}.`;
+    $("stuckPlay").hidden = availableShooters(p).length === 0;
+    $("stuck").hidden = false;
+    $("stuckPass").focus();
+  }
+
+  function passTurn() {
+    if (busy()) return;
+    const p = st.cur;
+    addLog(p, `${PLAYERS[p].name} passe son tour.`);
+    st.missed[p]++;
+    if (st.missed[p] >= CONFIG.MAX_MISSED_TURNS)
+      eliminate(p, `${CONFIG.MAX_MISSED_TURNS} tours de suite sans poser de pièce`);
+    nextTurn();
+  }
+
+  function endGame(reason) {
+    st.over = true;
+    SFX.end();
+    st.endTime = Date.now();
+    st.recruiting = false;
+    clearModes();
+    hover = null;
+    $("recruit").hidden = true;
+    $("stuck").hidden = true;
+    $("cavPop").hidden = true;
+    $("combat").hidden = true;
+    $("chestPop").hidden = true;
+    renderAll();
+
+    const alive = aliveList().sort((a, b) => score(b) - score(a));
+    const gone = [...st.elim].reverse();                 // le dernier éliminé est le mieux classé
+    const order = [...alive, ...gone];
+    const best = score(alive[0]);
+    const winners = alive.filter((p) => score(p) === best);
+    $("modalSub").textContent = winners.length > 1
+      ? "Égalité entre " + winners.map((p) => PLAYERS[p].name).join(" et ") + "."
+      : PLAYERS[winners[0]].name + " remporte la partie.";
+    if (reason) $("modalSub").textContent = reason + " " + $("modalSub").textContent;
+    $("modalTime").textContent = "Durée de la partie : " + fmtLong(elapsedMs()) + ".";
+    const ol = $("ranking");
+    ol.innerHTML = "";
+    order.forEach((p) => {
+      const li = document.createElement("li");
+      li.innerHTML = '<span class="dot"></span><div class="who"><b></b><small class="s1"></small><small class="s2"></small></div><span class="pts"></span>';
+      li.querySelector(".dot").style.background = PLAYERS[p].color;
+      li.querySelector("b").textContent = PLAYERS[p].name + (st.out[p] ? " (éliminé)" : "");
+      const cannons = blocksOf(p).filter((b) => b.type === CANNON).length + st.cannon[p];
+      const w = (n) => `${n} combat${n > 1 ? "s" : ""} gagné${n > 1 ? "s" : ""}`;
+      li.querySelector(".s1").textContent =
+        `${plural(blocksOf(p).length, "bloc")} · ${st.opened[p]}/${CONFIG.CHESTS_PER_PLAYER} coffres · ${w(st.wins[p])} · ${plural(turnsPlayed(p), "tour")} joué${turnsPlayed(p) > 1 ? "s" : ""}`;
+      li.querySelector(".s2").textContent =
+        `${plural(st.guard[p], "soldat")} · ${st.vill[p]} villageois · ${plural(archersOf(p), "archer")} · ${plural(cavalryOf(p), "cavalier")} · ${plural(cannons, "canon")} · ${w(st.cannonWins[p])} par canon`;
+      li.querySelector(".pts").textContent = score(p);
+      ol.appendChild(li);
+    });
+    $("modal").hidden = false;
+  }
+
+  /* =====================================================================
+     SONS — synthétisés par le navigateur (Web Audio), aucun fichier à charger
+     ===================================================================== */
+  let actx = null;
+  function audio() {
+    if (!$("sound").checked) return null;
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { actx = new AC(); } catch (e) { return null; }
+    }
+    if (actx.state === "suspended") actx.resume();
+    return actx;
+  }
+  function tone(freq, dur, o = {}) {
+    const a = audio();
+    if (!a) return;
+    const { type = "sine", vol = 0.15, delay = 0, to = null } = o;
+    const t = a.currentTime + delay;
+    const osc = a.createOscillator(), g = a.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    if (to) osc.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g); g.connect(a.destination);
+    osc.start(t); osc.stop(t + dur + 0.03);
+  }
+  const SFX = {
+    place()   { tone(260, 0.09, { type: "triangle", vol: 0.2, to: 140 }); },
+    bad()     { tone(130, 0.14, { type: "square", vol: 0.07, to: 90 }); },
+    clash()   { tone(420, 0.22, { type: "sawtooth", vol: 0.09, to: 140 }); tone(300, 0.22, { type: "square", vol: 0.06, to: 100, delay: 0.05 }); },
+    tick()    { tone(700 + Math.random() * 500, 0.025, { type: "square", vol: 0.04 }); },
+    reveal()  { tone(523, 0.12, { vol: 0.14 }); tone(784, 0.22, { vol: 0.14, delay: 0.1 }); },
+    chest()   { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, { type: "triangle", vol: 0.14, delay: i * 0.08 })); },
+    recruit() { tone(392, 0.15, { type: "square", vol: 0.06 }); tone(523, 0.25, { type: "square", vol: 0.06, delay: 0.14 }); },
+    stop()    { tone(520, 0.1, { type: "triangle", vol: 0.15 }); },
+    cannon()  { tone(160, 0.35, { type: "sawtooth", vol: 0.22, to: 40 }); tone(90, 0.3, { type: "square", vol: 0.12, to: 35, delay: 0.02 }); },
+    lost()    { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.2, { type: "triangle", vol: 0.14, delay: i * 0.12 })); },
+    unlock()  { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.16, { type: "triangle", vol: 0.13, delay: i * 0.07 })); },
+    end()     { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, { type: "triangle", vol: 0.15, delay: i * 0.14 })); },
+  };
+
+  /* ---------- Chronomètre ---------- */
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const elapsedMs = () => (st ? (st.endTime || Date.now()) - st.startTime : 0);
+  function fmtClock(ms) {
+    const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
+    return h ? `${h}:${pad2(m)}:${pad2(sec)}` : `${pad2(m)}:${pad2(sec)}`;
+  }
+  function fmtLong(ms) {
+    const t = Math.round(ms / 1000), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
+    return h ? `${h} h ${pad2(m)} min` : m ? `${m} min ${pad2(sec)} s` : `${sec} s`;
+  }
+  function updateTimer() {
+    if (!st) return;
+    $("bannerTime").textContent = (st.over ? "Durée de la partie : " : "Temps de jeu : ") + fmtClock(elapsedMs());
+  }
+  setInterval(updateTimer, 1000);
+
+  let toastTimer = null;
+  function toast(text) {
+    const t = $("toast");
+    t.textContent = text;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
+  }
+
+  function addLog(p, text, evt) {
+    st.log.unshift({ p, text, evt: !!evt });
+    if (st.log.length > 80) st.log.pop();
+  }
+
+  /* =====================================================================
+     RECRUTEMENT
+     ===================================================================== */
+  function showRecruit() {
+    if (isBot(st.cur)) return;                  // l'ordinateur recrute sans fenêtre
+    const p = st.cur;
+    $("recTitle").textContent = `${PLAYERS[p].name}, recrutez`;
+    $("recSub").textContent =
+      `Votre armée : ${plural(st.guard[p], "soldat")}, ${st.vill[p]} villageois. Choisissez un personnage à ajouter.`;
+    $("recruit").hidden = false;
+    SFX.recruit();
+    $("recGuard").focus();
+  }
+  function recruit(kind) {
+    if (!st || !st.recruiting) return;
+    const p = st.cur;
+    if (kind === "guard") { st.guard[p]++; addLog(p, `${PLAYERS[p].name} recrute un soldat.`, true); }
+    else { st.vill[p]++; addLog(p, `${PLAYERS[p].name} recrute un villageois.`, true); }
+    st.recruiting = false;
+    $("recruit").hidden = true;
+    $("stuck").hidden = true;
+    $("cavPop").hidden = true;
+    renderAll();
+    if (st.cavPopup) showCavPopup(); else if (st.stuck) showStuck();
+  }
+
+  /* =====================================================================
+     COMBAT (fenêtre)
+     ===================================================================== */
+  function showCombat() {
+    const { duels, fire } = st.combat;
+    const body = $("combatBody");
+    body.innerHTML = "";
+    st.combatUI = [];
+    const by0 = duels[0].by;
+    $("combatTitle").textContent = by0 === "cannon" ? "Tir de canon !" : by0 === "fort" ? "Tir de la Forteresse !" : by0 === "cav" ? "Charge de cavalerie !" : "Combat !";
+    const next = $("combatNext");
+    next.disabled = true;
+    SFX.clash();
+    let open = duels.filter((d) => d.winner === null).length;   // duels encore à départager
+
+    const checkDone = () => {
+      if (open > 0) return;
+      next.disabled = false;
+      next.focus();
+    };
+    const resultText = (d) => {
+      const A = PLAYERS[d.attacker].name, D = PLAYERS[d.defender].name;
+      if (d.auto) return `${A} prend ${plural(d.blocks.length, "bloc")} de ${D}, sans combat.`;
+      if (d.winner === d.attacker) return `${A} l'emporte et prend ${plural(d.blocks.length, "bloc")} de ${D}.`;
+      if (d.fire) return `${D} résiste : ${d.by === "cav" ? "la charge" : "le tir"} de ${A} échoue.`;
+      const nb = st.blocks.get(st.combat.id);
+      if (nb && nb.type === CANNON) return `${D} l'emporte, mais le canon reste à ${A} : l'attaquant ne perd pas son canon.`;
+      return `${D} l'emporte et prend le bloc que ${A} vient de poser.`;
+    };
+
+    duels.forEach((d) => {
+      const A = PLAYERS[d.attacker], D = PLAYERS[d.defender];
+      const box = document.createElement("div");
+      box.className = "duel";
+      let html = `<div class="duel-h">${A.name} ${d.by === "cav" ? "charge" : d.fire ? "tire sur" : "attaque"} ${D.name}</div>`;
+      if (d.auto) {
+        html += `<div class="tie-msg" style="margin-top:0">${D.name} est éliminé : ses blocs n'ont plus de défenseur.</div>`;
+      } else {
+        html += `<div class="vs">
+          <div class="side"><span class="dot" style="background:${A.color}"></span>${A.name} attaque : force ${d.g1} <span style="color:var(--muted);font-weight:400">(${d.detA})</span></div>
+          <div class="side"><span class="dot" style="background:${D.color}"></span>${D.name} défend : force ${d.g2} <span style="color:var(--muted);font-weight:400">(${d.detD})</span></div>
+        </div>`;
+        if (d.mainAtRisk) html += `<div class="warn">Capitale de ${D.name} en jeu : si elle est prise, ${D.name} est éliminé.</div>`;
+      }
+      if (d.winner === null) {
+        html += `<div class="tie-msg">Égalité à ${d.g1} ! Chaque joueur lance son dé.</div>
+          <div class="dice-row">
+            <div class="dcol"><span class="die" style="--c:${A.color}">?</span><button class="btn rollbtn">Lancer : ${A.name}</button></div>
+            <div class="dcol"><span class="die" style="--c:${D.color}">?</span><button class="btn rollbtn">Lancer : ${D.name}</button></div>
+          </div>`;
+      }
+      html += `<div class="res"></div>`;
+      box.innerHTML = html;
+      body.appendChild(box);
+
+      const res = box.querySelector(".res");
+      if (d.winner !== null) { res.textContent = resultText(d); res.classList.add("show"); return; }
+
+      // égalité : un bouton « Lancer » par joueur, avec animation de chiffres qui défilent
+      const dice = [...box.querySelectorAll(".die")];
+      const btns = [...box.querySelectorAll(".rollbtn")];
+      const msg = box.querySelector(".tie-msg");
+      let vals = [null, null], rolling = 0;
+      const whoOf = (side) => (side === 0 ? d.attacker : d.defender);
+
+      // deux ordinateurs : les dés sont lancés tout de suite (personne n'a de bouton à presser)
+      if (isBot(d.attacker) && isBot(d.defender)) {
+        let a, b;
+        do { a = rollDie(); b = rollDie(); d.rolls.push([a, b]); } while (a === b);
+        d.winner = a > b ? d.attacker : d.defender;
+        dice[0].textContent = a;
+        dice[1].textContent = b;
+        msg.textContent = `${A.name} : ${a} contre ${D.name} : ${b}`;
+        res.textContent = resultText(d);
+        res.classList.add("show");
+        addLog(d.attacker, `Dé : ${A.name} ${a}, ${D.name} ${b}.`, true);
+        btns.forEach((x) => (x.disabled = true));
+        open--;
+        return;
+      }
+
+      const settle = () => {
+        const [a, b] = vals;
+        d.rolls.push([a, b]);
+        if (a !== b) {
+          d.winner = a > b ? d.attacker : d.defender;
+          msg.textContent = `${A.name} : ${a} contre ${D.name} : ${b}`;
+          res.textContent = resultText(d);
+          res.classList.add("show");
+          addLog(d.attacker, `Dé : ${A.name} ${a}, ${D.name} ${b}.`, true);
+          open--;
+          SFX.reveal();
+          checkDone();
+          queueBot();
+          return;
+        }
+        msg.textContent = `Égalité ${a} - ${b} ! On relance.`;
+        setTimeout(() => {
+          vals = [null, null];
+          dice.forEach((e) => (e.textContent = "?"));
+          btns.forEach((x, i) => { x.disabled = isBot(whoOf(i)); });
+          queueBot();
+        }, 1300);
+      };
+
+      const rollSide = (side) => {
+        if (vals[side] !== null || rolling > 0) return;
+        rolling++;
+        btns[side].disabled = true;
+        const final = rollDie();
+        const el = dice[side];
+        const finish = () => {
+          el.textContent = final;
+          vals[side] = final;
+          rolling--;
+          SFX.stop();
+          if (vals[0] !== null && vals[1] !== null) setTimeout(settle, 500);
+        };
+        if (reducedMotion) { finish(); return; }
+        const t0 = performance.now();
+        const iv = setInterval(() => {
+          el.textContent = 1 + Math.floor(Math.random() * CONFIG.DICE_SIDES);
+          SFX.tick();
+          if (performance.now() - t0 > 900) { clearInterval(iv); finish(); }
+        }, 70);
+      };
+
+      btns.forEach((btn, side) => {
+        btn.addEventListener("click", () => rollSide(side));
+        if (isBot(whoOf(side))) {                       // le dé de l'ordinateur est lancé par lui
+          btn.disabled = true;
+          btn.textContent = `Dé de ${PLAYERS[whoOf(side)].name} (auto)`;
+        }
+      });
+      st.combatUI.push({ d, rollSide, canRoll: (side) => vals[side] === null && rolling === 0 });
+    });
+
+    $("combat").hidden = false;
+    if (open === 0) SFX.reveal();
+    checkDone();
+    queueBot();
+  }
+
+  function combatContinue() {
+    if (!st || !st.combat) return;
+    $("combat").hidden = true;
+    st.combatUI = null;
+    const c = applyCombats();
+    if (c.fire) afterFire(); else endOfAction();
+  }
+  $("combatNext").addEventListener("click", combatContinue);
+
+  /* =====================================================================
+     ORDINATEUR (bot)
+     Un joueur « Ordinateur » joue seul : il pose des blocs, tire, déplace ses
+     cavaliers, recrute et lance ses dés. Deux niveaux : facile et moyen.
+     ===================================================================== */
+  const BOT_LEVELS = {
+    easy:   { jitter: 14, aware: false, topK: 8, cav: false, fireChance: 0.5, areaW: 0.6, cannonMin: 99, cannonChance: 0.3 },
+    medium: { jitter: 3,  aware: true,  topK: 3, cav: true,  fireChance: 1,   areaW: 1,   cannonMin: 9,  cannonChance: 0 },
+  };
+  let botTimer = null;
+  const humansLeft = () => aliveList().some((p) => !isBot(p));
+  const botFast = () => !humansLeft();      // aucun humain en jeu : l'ordinateur va vite
+
+  // faut-il que l'ordinateur agisse ?
+  function botNeeded() {
+    if (!st || st.over) return false;
+    if (isBot(st.cur)) return true;
+    // un bot doit lancer son dé dans une égalité, même pendant le tour d'un humain
+    return !!(st.combat && st.combatUI && st.combatUI.some((u) => u.d.winner === null && (isBot(u.d.attacker) || isBot(u.d.defender))));
+  }
+  function queueBot(delay) {
+    if (botTimer || !botNeeded()) return;
+    const ref = st;
+    botTimer = setTimeout(() => {
+      botTimer = null;
+      if (st !== ref) return;
+      try { botStep(); } catch (e) { console.error("bot", e); }
+      queueBot();
+    }, delay === undefined ? (botFast() ? 15 : 250) : delay);
+  }
+  function clearBot() { clearTimeout(botTimer); botTimer = null; }
+
+  // temporisation : l'ordinateur attend un peu avant chaque action, pour que l'on puisse suivre
+  function hold(key, ms) {
+    const k = key + ":" + st.botSeq;
+    if (st.botHoldKey !== k) { st.botHoldKey = k; st.botHoldUntil = Date.now() + (botFast() ? 0 : ms); }
+    return Date.now() >= st.botHoldUntil;
+  }
+  const botDone = () => { st.botSeq++; };
+
+  // Une étape de l'ordinateur : traite la fenêtre ou l'action en attente, une chose à la fois.
+  function botStep() {
+    if (!st || st.over) return;
+    const p = st.cur;
+
+    // 1. combat : l'ordinateur lance ses dés, puis (si c'est son tour) continue
+    if (st.combat) {
+      for (const u of st.combatUI || []) {
+        if (u.d.winner !== null) continue;
+        for (const side of [0, 1]) {
+          const who = side === 0 ? u.d.attacker : u.d.defender;
+          if (isBot(who) && u.canRoll(side) && hold("roll", 700)) { botDone(); u.rollSide(side); return; }
+        }
+      }
+      if (isBot(p) && !$("combatNext").disabled && hold("combat", 2200)) { botDone(); combatContinue(); }
+      return;
+    }
+    if (!isBot(p)) return;
+
+    // 2. fenêtres d'information et choix
+    if (st.recruiting) { if (hold("rec", 800)) { botDone(); recruit(botRecruitChoice(p)); } return; }
+    if (st.cavPopup) { if (hold("cavpop", 2200)) { botDone(); closeCavPopup(); } return; }
+    if (st.chestPopup) { if (hold("chestpop", 2200)) { botDone(); closeChestPopup(); } return; }
+    if (st.stuck) { if (hold("stuck", 900)) { botDone(); botStuck(); } return; }
+
+    // 3. tour libre
+    if (!hold("act", 650)) return;
+    botDone();
+    botAct();
+  }
+
+  // niveau de menace : l'ordinateur renforce sa défense si une attaque adverse le dépasse
+  function botRecruitChoice(p) {
+    const L = BOT_LEVELS[PLAYERS[p].bot];
+    if (!L.aware) return Math.random() < 0.5 ? "guard" : "vill";
+    let threat = 0;
+    for (const q of aliveList()) if (q !== p) threat = Math.max(threat, attackPower(q));
+    if (threat > defensePower(p) && Math.random() < 0.8) return "vill";
+    return Math.random() < 0.85 ? "guard" : "vill";
+  }
+
+  // bloqué : il continue s'il peut encore tirer ou déplacer un cavalier, sinon il quitte la partie
+  function botStuck() {
+    const p = st.cur;
+    const canAct = availableShooters(p).length > 0 || availableCav(p).length > 0;
+    st.stuck = false;
+    $("stuck").hidden = true;
+    if (canAct) { renderAll(); return; }
+    eliminate(p, "a quitté la partie");
+    nextTurn();
+  }
+
+  const winProb = (p, opp) => {
+    if (st.out[opp]) return 1;
+    const a = attackPower(p), d = defensePower(opp);
+    return a > d ? 1 : a === d ? 0.5 : 0;
+  };
+  // intérêt de prendre un bloc : ses points, un bonus pour les Forteresses et canons, énorme pour une Capitale
+  // (la Capitale ne vaut gros que si la prise est certaine : l'ordinateur ne joue pas la partie à pile ou face)
+  const blockValue = (b, pr = 1) =>
+    b.pts + (b.type === 3 ? 6 : 0) + (b.type === CANNON ? 5 : 0) + (b.main !== undefined && b.main === b.owner && !st.out[b.owner] ? (pr >= 1 ? 400 : 25) : 0);
+  const rectDist = (x, y, w, h, tx, ty, tw, th) =>
+    Math.max(Math.max(0, tx - (x + w - 1), x - (tx + tw - 1)), Math.max(0, ty - (y + h - 1), y - (ty + th - 1)));
+
+  function botAct() {
+    const p = st.cur, L = BOT_LEVELS[PLAYERS[p].bot];
+    const key = p + ":" + st.turnNo[p];
+    if (st.botTurnKey !== key) { st.botTurnKey = key; st.botDoneSet = new Set(); st.botActs = 0; }
+    st.botActs++;
+    const run = (fn) => { st.botRun = true; try { return fn(); } finally { st.botRun = false; } };
+    if (isFirst(p)) { run(() => botCapitale(p)); return; }
+    if (st.botActs <= 20) {
+      if (run(() => botFire(L))) return;
+      if (L.cav && run(() => botCavalry())) return;
+    }
+    run(() => botPlace(L));
+  }
+
+  function botCapitale(p) {
+    const N = st.N, [cx, cy] = cornersOf(N)[p];
+    placePiece(p, cx === 0 ? 0 : N - 3, cy === 0 ? 0 : N - 3, 3, 3, VILLAGE);
+  }
+
+  // tir des canons et des Forteresses : sur la cible la plus intéressante (un tir manqué ne coûte rien)
+  function botFire(L) {
+    const p = st.cur, R = cannonRange(), N = st.N;
+    let best = null;
+    for (const s of availableShooters(p)) {
+      if (st.botDoneSet.has("s" + s.id)) continue;
+      const seen = new Set();
+      for (let y = Math.max(0, s.y - R); y <= Math.min(N - 1, s.y + s.h - 1 + R); y++) {
+        for (let x = Math.max(0, s.x - R); x <= Math.min(N - 1, s.x + s.w - 1 + R); x++) {
+          const id = st.grid[y * N + x];
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          const b = st.blocks.get(id);
+          if (b.owner === p) continue;
+          const pr = winProb(p, b.owner);
+          if (pr <= 0) continue;
+          const v = pr * blockValue(b, pr);
+          if (!best || v > best.v) best = { s, x, y, v };
+        }
+      }
+    }
+    if (!best) return false;
+    st.botDoneSet.add("s" + best.s.id);
+    if (Math.random() > L.fireChance) return true;
+    st.fireMode = true; st.cavMode = false;
+    tryFire({ x: best.x, y: best.y });
+    st.fireMode = false;
+    return true;
+  }
+
+  // cavaliers : charge si une cible intéressante est à portée, sinon avance vers l'ennemi
+  function botCavalry() {
+    const p = st.cur, N = st.N, RC = CONFIG.CAVALRY_REACH;
+    for (const c of availableCav(p)) {
+      if (st.botDoneSet.has("c" + c.id)) continue;
+      st.botDoneSet.add("c" + c.id);
+      let best = null;
+      const seen = new Set();
+      for (let y = Math.max(0, c.y - RC); y <= Math.min(N - 1, c.y + RC); y++) {
+        for (let x = Math.max(0, c.x - RC); x <= Math.min(N - 1, c.x + RC); x++) {
+          const id = st.grid[y * N + x];
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          const b = st.blocks.get(id);
+          if (b.owner === p) continue;
+          const pr = winProb(p, b.owner);
+          if (pr <= 0) continue;
+          const v = pr * blockValue(b, pr);
+          if (!best || v > best.v) best = { x, y, v };
+        }
+      }
+      const target = best || botCavDest(c);
+      if (target) {
+        st.cavMode = true; st.cavSel = c.id;
+        tryCav(target);
+        if (st.cavMode) clearModes();
+        return true;
+      }
+    }
+    return false;
+  }
+  function botCavDest(c) {
+    const p = st.cur, N = st.N;
+    const enemies = [...st.blocks.values()].filter((b) => b.owner !== p && !st.out[b.owner]);
+    if (!enemies.length) return null;
+    const dist = (x, y) => { let m = 1e9; for (const b of enemies) m = Math.min(m, rectDist(x, y, 1, 1, b.x, b.y, b.w, b.h)); return m; };
+    let bestD = dist(c.x, c.y), best = null;
+    for (const k of cavReach(c)) {
+      const x = k % N, y = (k - x) / N, d = dist(x, y);
+      if (d < bestD) { bestD = d; best = { x, y }; }
+    }
+    return best;
+  }
+
+  // meilleur emplacement pour un canon : beaucoup de cibles dans sa zone, de préférence près de ses blocs
+  function botCannonSpot() {
+    const p = st.cur, N = st.N, R = cannonRange();
+    let best = null;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const k = y * N + x;
+        if (st.grid[k] || st.chestAt.has(k)) continue;
+        if (!validate(p, x, y, 1, 1, CANNON).ok) continue;
+        let val = 0, safe = false;
+        const seen = new Set();
+        for (let yy = Math.max(0, y - R); yy <= Math.min(N - 1, y + R); yy++) {
+          for (let xx = Math.max(0, x - R); xx <= Math.min(N - 1, x + R); xx++) {
+            const id = st.grid[yy * N + xx];
+            if (!id || seen.has(id)) continue;
+            seen.add(id);
+            const b = st.blocks.get(id);
+            if (b.owner === p) { if (Math.abs(xx - x) <= 1 && Math.abs(yy - y) <= 1) safe = true; continue; }
+            val += winProb(p, b.owner) * Math.min(blockValue(b, 0.5), 12);
+          }
+        }
+        const score = val * 0.6 + (safe ? 2 : 0) + Math.random() * 2;
+        if (!best || score > best.score) best = { x, y, score };
+      }
+    }
+    return best;
+  }
+
+  // pose d'un bloc : on évalue tous les emplacements valides et on en choisit un parmi les meilleurs
+  function botPlace(L) {
+    const p = st.cur, N = st.N;
+    const hintsAll = validCells(p);
+    if (st.cannon[p] > 0) {
+      const cc = botCannonSpot();
+      if (cc && (cc.score >= L.cannonMin || !hintsAll.length || Math.random() < L.cannonChance)) {
+        placePiece(p, cc.x, cc.y, 1, 1, CANNON);
+        return;
+      }
+    }
+    if (!hintsAll.length) { passTurn(); return; }
+
+    // formes disponibles (agrandissements selon le nombre de villageois)
+    const shapes = [];
+    const maxM = 1 + st.vill[p];
+    for (const type of [0, 1, 2, 3]) {
+      if (type === 3 && !st.unlocked) continue;
+      for (let m = 1; m <= maxM; m++) {
+        let w = PIECES[type].w, h = PIECES[type].h;
+        if (m > 1) { if (w < h) w *= m; else h *= m; }
+        shapes.push({ type, w, h });
+        if (w !== h) shapes.push({ type, w: h, h: w });
+      }
+    }
+    const cells = shapes.reduce((a, s) => a + s.w * s.h, 0);
+    let hints = hintsAll;
+    const maxHints = Math.max(30, Math.floor(60000 / cells));
+    if (hints.length > maxHints) hints = [...hints].sort(() => Math.random() - 0.5).slice(0, maxHints);
+
+    const cands = [], seen = new Set();
+    for (const k of hints) {
+      const hx = k % N, hy = (k - hx) / N;
+      for (const sh of shapes) {
+        for (let oy = 0; oy < sh.h; oy++) {
+          for (let ox = 0; ox < sh.w; ox++) {
+            const x = hx - ox, y = hy - oy;
+            const key = x + "," + y + "," + sh.w + "," + sh.h + "," + sh.type;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            if (validate(p, x, y, sh.w, sh.h, sh.type).ok) cands.push({ x, y, w: sh.w, h: sh.h, type: sh.type, score: 0 });
+          }
+        }
+      }
+    }
+    if (!cands.length) { passTurn(); return; }
+
+    const chests = st.chests.filter((c) => c.p === p && !c.opened);
+    const caps = [...st.blocks.values()].filter((b) => b.main !== undefined && b.main !== p && !st.out[b.main]);
+    for (const c of cands) {
+      const area = c.w * c.h;
+      let sc = area * L.areaW + (c.type === 3 ? 7 : 0);
+      for (const [opp, ids] of touchedOpponents(p, c.x, c.y, c.w, c.h)) {
+        if (!L.aware) { sc += Math.random() * 6; continue; }
+        const pr = winProb(p, opp);
+        let gain = 0;
+        for (const id of ids) gain += blockValue(st.blocks.get(id), pr);
+        sc += pr * gain * 1.2 - (1 - pr) * area * 1.5;
+      }
+      if (chests.length) {
+        let dmin = 1e9;
+        for (const ch of chests) dmin = Math.min(dmin, rectDist(c.x, c.y, c.w, c.h, ch.x, ch.y, 1, 1));
+        sc += dmin <= 1 ? 30 : -0.7 * dmin;
+      }
+      if (L.aware && caps.length) {
+        let dm = 1e9;
+        for (const b of caps) dm = Math.min(dm, rectDist(c.x, c.y, c.w, c.h, b.x, b.y, b.w, b.h));
+        sc -= 0.25 * dm;
+      }
+      c.score = sc + (Math.random() - 0.5) * 2 * L.jitter;
+    }
+    cands.sort((a, b) => b.score - a.score);
+    const pick = cands[Math.floor(Math.pow(Math.random(), 2) * Math.min(L.topK, cands.length))];
+    placePiece(p, pick.x, pick.y, pick.w, pick.h, pick.type);
+  }
+
+  /* =====================================================================
+     RENDU DU PLATEAU
+     ===================================================================== */
+  function readTheme() {
+    const cs = getComputedStyle(document.documentElement);
+    const g = (n) => cs.getPropertyValue(n).trim();
+    theme = { board: g("--board"), grid: g("--grid"), ink: g("--ink") };
+    draw();
+  }
+
+  function layout() {
+    if (!st) return;
+    const col = $("boardCol");
+    const W = col.clientWidth;
+    if (!W) return;
+    const H = Math.max(320, window.innerHeight - 140);
+    cell = Math.max(6, Math.floor(Math.min(W, H) / st.N));
+    dpr = window.devicePixelRatio || 1;
+    const S = cell * st.N;
+    canvas.style.width = S + "px";
+    canvas.style.height = S + "px";
+    canvas.width = Math.round(S * dpr);
+    canvas.height = Math.round(S * dpr);
+    draw();
+  }
+
+  // Doubler un côté : possible si le joueur a au moins un villageois (et après sa Capitale)
+  const dblPossible = () => st && !st.over && st.vill[st.cur] > 0 && !isFirst(st.cur);
+  // multiplicateur choisi : 1 (normal) jusqu'à 1 + nombre de villageois
+  const multValue = () => (dblPossible() ? Math.min(Number($("mult").value) || 1, 1 + st.vill[st.cur]) : 1);
+
+  function pieceDims(i) {
+    const P = PIECES[i];
+    let w = P.w, h = P.h;
+    const m = multValue();
+    if (!P.special && m > 1) { if (w < h) w *= m; else h *= m; }   // 1 villageois : 1×2, 2×4, 3×6, 4×4 ; 2 villageois : 1×3, 2×6, 3×9, 6×4...
+    if (rot && w !== h) [w, h] = [h, w];
+    return { w, h };
+  }
+  function pieceOpen(i) {
+    if (isFirst(st.cur)) return i === VILLAGE;
+    if (i === CANNON) return st.cannon[st.cur] > 0;
+    return !PIECES[i].late || st.unlocked;
+  }
+
+  function anchor() {
+    const P = pieceDims(sel);
+    return {
+      x: clamp(hover.x - Math.floor(P.w / 2), 0, st.N - P.w),
+      y: clamp(hover.y - Math.floor(P.h / 2), 0, st.N - P.h),
+      w: P.w, h: P.h,
+    };
+  }
+
+  function drawGlyph(b) {
+    // Village : maison — Base : drapeau — Forteresse : château — Canon : canon — Bloc : rien
+    if (b.type === 0) return;
+    const col = PLAYERS[b.owner].ink;
+    const cx = (b.x + b.w / 2) * cell, cy = (b.y + b.h / 2) * cell;
+    const s = Math.min(b.w, b.h) * cell * 0.5;
+    ctx.fillStyle = col;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    if (b.type === VILLAGE) {
+      ctx.moveTo(cx - s * 0.62, cy - s * 0.02);
+      ctx.lineTo(cx, cy - s * 0.62);
+      ctx.lineTo(cx + s * 0.62, cy - s * 0.02);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(cx - s * 0.42, cy - s * 0.02, s * 0.84, s * 0.55);
+    } else if (b.type === 3) {
+      ctx.fillRect(cx - s * 0.7, cy - s * 0.05, s * 1.4, s * 0.6);
+      for (const dx of [-0.7, -0.175, 0.35]) ctx.fillRect(cx + dx * s, cy - s * 0.4, s * 0.35, s * 0.35);
+    } else if (b.type === CANNON) {
+      ctx.fillRect(cx - s * 0.75, cy - s * 0.45, s * 1.3, s * 0.5);     // tube
+      ctx.arc(cx - s * 0.1, cy + s * 0.35, s * 0.4, 0, Math.PI * 2);     // roue
+      ctx.fill();
+    } else {
+      ctx.fillRect(cx - s * 0.32, cy - s * 0.55, s * 0.1, s * 1.1);
+      ctx.moveTo(cx - s * 0.22, cy - s * 0.55);
+      ctx.lineTo(cx + s * 0.5, cy - s * 0.3);
+      ctx.lineTo(cx - s * 0.22, cy - s * 0.05);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawMainMark(b) {
+    // étoile dorée au centre de la Capitale
+    const size = Math.max(12, Math.round(cell * 1.4));
+    const cx = (b.x + b.w / 2) * cell, cy = (b.y + b.h / 2) * cell + size * 0.04;
+    ctx.font = `700 ${size}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(0,0,0,.65)";
+    ctx.fillStyle = "#ffd84d";
+    ctx.strokeText("\u2605", cx, cy);
+    ctx.fillText("\u2605", cx, cy);
+  }
+
+  function draw() {
+    if (!st) return;
+    const N = st.N, S = cell * N;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, S, S);
+    ctx.fillStyle = theme.board || "#eee";
+    ctx.fillRect(0, 0, S, S);
+
+    // grille
+    ctx.strokeStyle = theme.grid || "#ccc";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 1; i < N; i++) {
+      ctx.moveTo(i * cell + 0.5, 0); ctx.lineTo(i * cell + 0.5, S);
+      ctx.moveTo(0, i * cell + 0.5); ctx.lineTo(S, i * cell + 0.5);
+    }
+    ctx.stroke();
+
+    // coins de départ (tant que le joueur n'a rien posé)
+    const corners = cornersOf(N);
+    for (let p = 0; p < st.n; p++) {
+      if (st.placed[p] > 0 || st.out[p]) continue;
+      const [cx, cy] = corners[p];
+      ctx.fillStyle = PLAYERS[p].color + "55";
+      ctx.fillRect(cx * cell, cy * cell, cell, cell);
+      ctx.strokeStyle = PLAYERS[p].color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(cx * cell + 1.5, cy * cell + 1.5, cell - 3, cell - 3);
+      ctx.setLineDash([]);
+    }
+
+    // blocs posés (couleur du propriétaire actuel ; assombris si le joueur est éliminé)
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const id = st.grid[y * N + x];
+        if (!id) continue;
+        const owner = st.blocks.get(id).owner;
+        ctx.fillStyle = PLAYERS[owner].color;
+        ctx.fillRect(x * cell, y * cell, cell, cell);
+        if (st.out[owner]) { ctx.fillStyle = "rgba(10,14,18,.55)"; ctx.fillRect(x * cell, y * cell, cell, cell); }
+        ctx.strokeStyle = "rgba(255,255,255,.18)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x * cell + 0.5, y * cell + 0.5, cell - 1, cell - 1);
+      }
+    }
+    // contours des blocs
+    ctx.strokeStyle = "rgba(0,0,0,.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const same = (x, y, id) => x >= 0 && y >= 0 && x < N && y < N && st.grid[y * N + x] === id;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const id = st.grid[y * N + x];
+        if (!id) continue;
+        const X = x * cell, Y = y * cell;
+        if (!same(x - 1, y, id)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + cell); }
+        if (!same(x + 1, y, id)) { ctx.moveTo(X + cell, Y); ctx.lineTo(X + cell, Y + cell); }
+        if (!same(x, y - 1, id)) { ctx.moveTo(X, Y); ctx.lineTo(X + cell, Y); }
+        if (!same(x, y + 1, id)) { ctx.moveTo(X, Y + cell); ctx.lineTo(X + cell, Y + cell); }
+      }
+    }
+    ctx.stroke();
+    for (const b of st.blocks.values()) {
+      drawGlyph(b);
+      if (b.main !== undefined) drawMainMark(b);
+    }
+
+    // aide : cases où l'on peut poser
+    if ($("help").checked && !busy() && !st.fireMode && !st.cavMode && sel !== CANNON) {
+      ctx.fillStyle = PLAYERS[st.cur].color;
+      ctx.globalAlpha = 0.6;
+      for (const k of st.hints) {
+        const x = k % N, y = Math.floor(k / N);
+        ctx.beginPath();
+        ctx.arc(x * cell + cell / 2, y * cell + cell / 2, Math.max(2.5, cell * 0.16), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // coffres
+    for (const ch of st.chests) drawChest(ch);
+
+    // mode tir : zone d'action de chaque canon prêt + bloc visé
+    if (st.fireMode && !busy()) {
+      const R = cannonRange();
+      for (const c of availableShooters(st.cur)) {
+        const x0 = Math.max(0, c.x - R), y0 = Math.max(0, c.y - R);
+        const x1 = Math.min(N - 1, c.x + c.w - 1 + R), y1 = Math.min(N - 1, c.y + c.h - 1 + R);
+        ctx.fillStyle = PLAYERS[st.cur].color + "26";
+        ctx.fillRect(x0 * cell, y0 * cell, (x1 - x0 + 1) * cell, (y1 - y0 + 1) * cell);
+        ctx.strokeStyle = PLAYERS[st.cur].color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(x0 * cell + 1, y0 * cell + 1, (x1 - x0 + 1) * cell - 2, (y1 - y0 + 1) * cell - 2);
+        ctx.setLineDash([]);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#fff";
+        ctx.strokeRect(c.x * cell + 1.5, c.y * cell + 1.5, c.w * cell - 3, c.h * cell - 3);
+      }
+      if (hover) {
+        const id = st.grid[hover.y * N + hover.x];
+        if (id) {
+          const t = st.blocks.get(id);
+          if (t.owner !== st.cur) {
+            const ok = !!shooterFor(st.cur, hover);
+            ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.8)";
+            ctx.strokeRect(t.x * cell + 2.5, t.y * cell + 2.5, t.w * cell - 5, t.h * cell - 5);
+            ctx.lineWidth = 2; ctx.strokeStyle = ok ? "#1fa971" : "#e5484d";
+            ctx.strokeRect(t.x * cell + 2.5, t.y * cell + 2.5, t.w * cell - 5, t.h * cell - 5);
+          }
+        }
+      }
+    }
+
+    // canon sélectionné : zones interdites autour des Capitales adverses
+    if (sel === CANNON && !busy() && !st.fireMode && !st.cavMode) {
+      const R = cannonRange() + CONFIG.CANNON_BAN_MARGIN;
+      for (const b of st.blocks.values()) {
+        if (b.main === undefined || b.main === st.cur || st.out[b.main]) continue;
+        const x0 = Math.max(0, b.x - R), y0 = Math.max(0, b.y - R);
+        const x1 = Math.min(N - 1, b.x + b.w - 1 + R), y1 = Math.min(N - 1, b.y + b.h - 1 + R);
+        ctx.fillStyle = "rgba(229,72,77,.18)";
+        ctx.fillRect(x0 * cell, y0 * cell, (x1 - x0 + 1) * cell, (y1 - y0 + 1) * cell);
+        ctx.strokeStyle = "rgba(229,72,77,.85)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(x0 * cell + 1, y0 * cell + 1, (x1 - x0 + 1) * cell - 2, (y1 - y0 + 1) * cell - 2);
+        ctx.setLineDash([]);
+      }
+    }
+
+    // cavaliers (toujours visibles)
+    for (const c of st.cav) {
+      const cx = (c.x + 0.5) * cell, cy = (c.y + 0.5) * cell, r = cell * 0.4;
+      ctx.globalAlpha = c.acted && c.owner === st.cur ? 0.55 : 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(10,14,18,.8)";
+      ctx.fill();
+      ctx.lineWidth = Math.max(1.5, cell * 0.08);
+      ctx.strokeStyle = PLAYERS[c.owner].color;
+      ctx.stroke();
+      if (cell >= 10) {
+        ctx.fillStyle = "#fff";
+        ctx.font = `700 ${Math.round(cell * 0.62)}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("\u265E", cx, cy + cell * 0.04);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // mode cavalier : cavaliers prêts, cases atteignables et zone d'attaque
+    if (st.cavMode && !busy()) {
+      for (const c of availableCav(st.cur)) {
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = c.id === st.cavSel ? "#ffd84d" : "#fff";
+        ctx.strokeRect(c.x * cell + 1.5, c.y * cell + 1.5, cell - 3, cell - 3);
+      }
+      const sc = cavSelected();
+      if (sc) {
+        ctx.fillStyle = "rgba(31,169,113,.45)";
+        for (const k of cavReach(sc)) ctx.fillRect((k % N) * cell, Math.floor(k / N) * cell, cell, cell);
+        const R = CONFIG.CAVALRY_REACH;
+        const x0 = Math.max(0, sc.x - R), y0 = Math.max(0, sc.y - R);
+        const x1 = Math.min(N - 1, sc.x + R), y1 = Math.min(N - 1, sc.y + R);
+        ctx.strokeStyle = PLAYERS[st.cur].color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(x0 * cell + 1, y0 * cell + 1, (x1 - x0 + 1) * cell - 2, (y1 - y0 + 1) * cell - 2);
+        ctx.setLineDash([]);
+        if (hover) {
+          const id = st.grid[hover.y * N + hover.x];
+          if (id) {
+            const t = st.blocks.get(id);
+            if (t.owner !== st.cur) {
+              ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.8)";
+              ctx.strokeRect(t.x * cell + 2.5, t.y * cell + 2.5, t.w * cell - 5, t.h * cell - 5);
+              ctx.lineWidth = 2; ctx.strokeStyle = cavTargetOk(sc, t, hover) ? "#1fa971" : "#e5484d";
+              ctx.strokeRect(t.x * cell + 2.5, t.y * cell + 2.5, t.w * cell - 5, t.h * cell - 5);
+            }
+          }
+        }
+      }
+    }
+
+    // aperçu de la pièce
+    if (hover && !busy() && !st.fireMode && !st.cavMode) {
+      const a = anchor();
+      const v = validate(st.cur, a.x, a.y, a.w, a.h, sel);
+      ctx.fillStyle = v.ok ? "rgba(31,169,113,.55)" : "rgba(229,72,77,.55)";
+      ctx.fillRect(a.x * cell, a.y * cell, a.w * cell, a.h * cell);
+      ctx.strokeStyle = v.ok ? "#1fa971" : "#e5484d";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(a.x * cell + 1.5, a.y * cell + 1.5, a.w * cell - 3, a.h * cell - 3);
+      ctx.fillStyle = "#fff";
+      ctx.font = `700 ${Math.round(Math.min(a.w, a.h) * cell * 0.7)}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(v.ok ? "✓" : "✕", (a.x + a.w / 2) * cell, (a.y + a.h / 2) * cell + 1);
+
+      // blocs adverses qui seraient engagés dans un combat
+      if (v.ok) {
+        for (const ids of touchedOpponents(st.cur, a.x, a.y, a.w, a.h).values()) {
+          for (const id of ids) {
+            const b = st.blocks.get(id);
+            ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.8)"; ctx.setLineDash([]);
+            ctx.strokeRect(b.x * cell + 2.5, b.y * cell + 2.5, b.w * cell - 5, b.h * cell - 5);
+            ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.setLineDash([5, 4]);
+            ctx.strokeRect(b.x * cell + 2.5, b.y * cell + 2.5, b.w * cell - 5, b.h * cell - 5);
+            ctx.setLineDash([]);
+          }
+        }
+      }
+    }
+  }
+
+  function drawChest(ch) {
+    const X = ch.x * cell, Y = ch.y * cell, col = PLAYERS[ch.p].color;
+    const dark = mix(col, "#000000", 0.4);
+    const cx = X + cell / 2;
+    ctx.fillStyle = theme.board;
+    ctx.fillRect(X, Y, cell, cell);
+    ctx.fillStyle = ch.opened ? "rgba(255,216,77,.28)" : col + "59";
+    ctx.fillRect(X, Y, cell, cell);
+
+    const m = cell * 0.14, bx = X + m, bw = cell - 2 * m;
+    const by = Y + cell * 0.5, bh = cell * 0.34;
+    const lw = Math.max(1, cell * 0.05);
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(0,0,0,.65)";
+    ctx.lineWidth = lw;
+
+    if (ch.opened) {
+      // couvercle relevé, derrière le coffre
+      ctx.fillStyle = dark;
+      ctx.beginPath();
+      ctx.moveTo(bx + bw * 0.06, by);
+      ctx.lineTo(bx - cell * 0.01, Y + cell * 0.12);
+      ctx.lineTo(bx + bw + cell * 0.01, Y + cell * 0.12);
+      ctx.lineTo(bx + bw * 0.94, by);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      // intérieur doré
+      ctx.fillStyle = "#ffd84d";
+      ctx.fillRect(bx + bw * 0.06, by - cell * 0.06, bw * 0.88, cell * 0.12);
+      // pièces
+      for (const [dx, dy] of [[-0.2, -0.09], [0, -0.17], [0.2, -0.09]]) {
+        ctx.beginPath();
+        ctx.arc(cx + dx * cell, by + dy * cell, cell * 0.075, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffd84d"; ctx.fill(); ctx.stroke();
+      }
+      // corps
+      ctx.fillStyle = col;
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeRect(bx, by, bw, bh);
+    } else {
+      // corps
+      ctx.fillStyle = col;
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeRect(bx, by, bw, bh);
+      // couvercle arrondi
+      const ly = Y + cell * 0.22;
+      ctx.fillStyle = dark;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx, ly + cell * 0.12);
+      ctx.quadraticCurveTo(cx, ly - cell * 0.1, bx + bw, ly + cell * 0.12);
+      ctx.lineTo(bx + bw, by);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      // cadenas
+      const lkw = cell * 0.2, lkh = cell * 0.17, lky = by - lkh * 0.35;
+      ctx.beginPath();
+      ctx.arc(cx, lky, lkw * 0.32, Math.PI, 0);
+      ctx.strokeStyle = "rgba(0,0,0,.75)";
+      ctx.lineWidth = Math.max(1.5, cell * 0.06);
+      ctx.stroke();
+      ctx.fillStyle = "#ffe27a";
+      ctx.fillRect(cx - lkw / 2, lky, lkw, lkh);
+      ctx.lineWidth = lw;
+      ctx.strokeRect(cx - lkw / 2, lky, lkw, lkh);
+    }
+
+    // bordure : pleine = fermé, pointillée = ouvert
+    const bw2 = Math.max(2, cell * 0.09);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = bw2;
+    if (ch.opened) ctx.setLineDash([Math.max(2, cell * 0.2), Math.max(2, cell * 0.12)]);
+    ctx.strokeRect(X + bw2 / 2, Y + bw2 / 2, cell - bw2, cell - bw2);
+    ctx.setLineDash([]);
+
+    // pastille « ouvert »
+    if (ch.opened && cell >= 14) {
+      const r = cell * 0.17;
+      ctx.beginPath();
+      ctx.arc(X + cell - r - 1, Y + r + 1, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#1fa971"; ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = `700 ${Math.round(cell * 0.26)}px system-ui, sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("✓", X + cell - r - 1, Y + r + 2);
+    }
+  }
+
+  /* =====================================================================
+     PANNEAU LATÉRAL
+     ===================================================================== */
+  function renderAll() {
+    if (!st.over) st.hints = validCells(st.cur);   // les cases d'aide suivent les blocs pris pendant le tour (tir, charge)
+    renderBanner();
+    updateTimer();
+    renderPieces();
+    renderScores();
+    renderLog();
+    draw();
+    updateHint();
+    queueBot();
+  }
+
+  function renderBanner() {
+    if (st.over) {
+      $("bannerDot").style.background = "var(--muted)";
+      $("bannerName").textContent = "Partie terminée";
+      $("bannerSub").textContent = "";
+      $("bannerRec").textContent = "";
+      $("bannerWarn").textContent = "";
+      return;
+    }
+    const p = st.cur, P = PLAYERS[p];
+    $("bannerDot").style.background = P.color;
+    $("bannerName").textContent = "Tour " + deName(P.name);
+    $("bannerSub").textContent = isFirst(p)
+      ? "Posez votre Capitale : un Village 3×3 sur votre coin de départ (case en pointillés)."
+      : "Choisissez un bloc et posez-le contre l'un de vos blocs.";
+    if (isBot(p)) $("bannerSub").textContent = "L'ordinateur joue…";
+    const t = st.turnNo[p], first = CONFIG.RECRUIT_FIRST, every = CONFIG.RECRUIT_EVERY;
+    const left = t < first ? first - t : every - ((t - first) % every);
+    $("bannerRec").textContent = `Tour n°${t} de ${P.name}. ` + (isRecruitTurn(t)
+      ? "Recrutement ce tour-ci."
+      : `Prochain recrutement : dans ${plural(left, "tour")}.`);
+    const m = st.missed[p];
+    $("bannerWarn").textContent = m > 0
+      ? `Attention : ${m}/${CONFIG.MAX_MISSED_TURNS} tours de suite sans poser de pièce. À ${CONFIG.MAX_MISSED_TURNS}, vous êtes éliminé.`
+      : "";
+  }
+
+  function renderPieces() {
+    const box = $("pieces");
+    if (!box.children.length) {
+      PIECES.forEach((P, i) => {
+        const b = document.createElement("button");
+        b.className = "piece";
+        b.innerHTML = '<div class="mini"></div><span class="lbl"></span><span class="pt"></span>';
+        b.addEventListener("click", () => selectPiece(i));
+        box.appendChild(b);
+      });
+    }
+    const cur = st.cur;
+    const color = PLAYERS[cur].color;
+    // option « doubler un côté » : réservée aux joueurs qui ont un villageois
+    const maxM = dblPossible() ? 1 + st.vill[cur] : 1;
+    const mSel = $("mult");
+    if (Number(mSel.dataset.max) !== maxM) {   // options reconstruites quand le nombre de villageois change
+      const keep = Math.min(Number(mSel.value) || 1, maxM);
+      mSel.innerHTML = "";
+      for (let k = 1; k <= maxM; k++) {
+        const o = document.createElement("option");
+        o.value = String(k);
+        o.textContent = k === 1 ? "Normale" : `×${k} (un côté)`;
+        mSel.appendChild(o);
+      }
+      mSel.value = String(keep);
+      mSel.dataset.max = String(maxM);
+    }
+    mSel.disabled = maxM === 1 || isBot(cur);
+
+    [...box.children].forEach((b, i) => {
+      const P = PIECES[i], d = pieceDims(i), open = !st.over && !isBot(cur) && pieceOpen(i);
+      b.disabled = !open;
+      b.setAttribute("aria-pressed", i === sel ? "true" : "false");
+      b.querySelector(".lbl").textContent = P.special ? P.name : `${P.name} ${d.w}×${d.h}`;
+      b.querySelector(".pt").textContent = P.special
+        ? `${st.cannon[cur]} en réserve`
+        : (open || !P.late ? plural(d.w * d.h, "point") : `tour ${CONFIG.UNLOCK_TURN}`);
+      const mini = b.querySelector(".mini");
+      const size = Math.max(d.w, d.h) > 4 ? 7 : 10;
+      mini.style.setProperty("--s", size + "px");
+      mini.style.gridTemplateColumns = `repeat(${d.w}, var(--s))`;
+      mini.innerHTML = "";
+      for (let k = 0; k < d.w * d.h; k++) {
+        const c = document.createElement("i");
+        c.style.background = P.special ? "#4b5563" : color;
+        mini.appendChild(c);
+      }
+    });
+
+    const dSel = pieceDims(sel);
+    $("rotate").disabled = st.over || isBot(cur) || dSel.w === dSel.h;
+    const ready = st.over ? 0 : availableShooters(cur).length;
+    $("fire").disabled = st.over || isBot(cur) || (!st.fireMode && ready === 0);
+    $("fire").textContent = st.fireMode ? "Annuler le tir" : `Tirer${ready ? " (" + ready + ")" : ""}`;
+    $("fire").classList.toggle("armed", st.fireMode);
+    const cavReady = st.over ? 0 : availableCav(cur).length;
+    $("cav").disabled = st.over || isBot(cur) || (!st.cavMode && cavReady === 0);
+    $("cav").textContent = st.cavMode ? "Annuler le cavalier" : `Cavalier${cavReady ? " (" + cavReady + ")" : ""}`;
+    $("cav").classList.toggle("armed", st.cavMode);
+  }
+
+  function renderScores() {
+    const box = $("scores");
+    box.innerHTML = "";
+    for (let p = 0; p < st.n; p++) {
+      const row = document.createElement("div");
+      row.className = "pl" + (p === st.cur && !st.over ? " current" : "") + (st.out[p] || st.blocked[p] ? " blocked" : "");
+      row.innerHTML = '<span class="dot"></span><div class="who"><b></b><span class="force"></span><small class="l1"></small><small class="l2"></small><small class="l3"></small><small class="l4"></small></div><span class="pts"></span>';
+      row.querySelector(".dot").style.background = PLAYERS[p].color;
+      row.querySelector("b").textContent = PLAYERS[p].name + (st.out[p] ? " (éliminé)" : st.blocked[p] ? " (bloqué)" : "");
+      const placedCannons = blocksOf(p).filter((b) => b.type === CANNON).length;
+      row.querySelector(".l1").textContent =
+        `${plural(blocksOf(p).length, "bloc")} · ${st.opened[p]}/${CONFIG.CHESTS_PER_PLAYER} coffres · ${plural(turnsPlayed(p), "tour")} joué${turnsPlayed(p) > 1 ? "s" : ""}`;
+      row.querySelector(".l2").textContent =
+        `Armée : ${plural(st.guard[p], "soldat")}, ${st.vill[p]} villageois, ${plural(archersOf(p), "archer")}, ${plural(cavalryOf(p), "cavalier")}`;
+      row.querySelector(".force").textContent = `Att ${attackPower(p)} · Déf ${defensePower(p)}`;
+      row.querySelector(".l3").textContent =
+        `Canons : ${placedCannons} posé${placedCannons > 1 ? "s" : ""}, ${st.cannon[p]} en réserve`;
+      row.querySelector(".l4").textContent =
+        `Combats gagnés : ${st.wins[p]}` + (st.cannonWins[p] ? ` (par canon : ${st.cannonWins[p]})` : "") + (st.missed[p] ? ` · ${st.missed[p]}/${CONFIG.MAX_MISSED_TURNS} tours passés` : "");
+      row.querySelector(".pts").textContent = score(p);
+      box.appendChild(row);
+    }
+  }
+
+  function renderLog() {
+    const ul = $("log");
+    ul.innerHTML = "";
+    st.log.slice(0, 40).forEach((e) => {
+      const li = document.createElement("li");
+      li.innerHTML = '<span class="dot"></span><span></span>';
+      li.querySelector(".dot").style.background = PLAYERS[e.p].color;
+      const t = li.children[1];
+      t.textContent = e.text;
+      if (e.evt) t.className = "evt";
+      ul.appendChild(li);
+    });
+  }
+
+  function setHint(text, kind) {
+    const h = $("hint");
+    h.textContent = text;
+    h.className = kind || "";
+  }
+  function updateHint() {
+    if (!st) return;
+    if (st.over) { setHint("Partie terminée.", ""); return; }
+    if (st.recruiting) { setHint("Choisissez un personnage à recruter.", ""); return; }
+    if (st.combat) { setHint("Combat en cours.", ""); return; }
+    if (st.chestPopup) { setHint("Coffre ouvert !", ""); return; }
+    if (isBot(st.cur)) { setHint(`${PLAYERS[st.cur].name} (ordinateur) joue…`, ""); return; }
+
+    if (st.fireMode) {
+      if (!hover) { setHint(`Mode tir : cliquez un bloc adverse dans une zone en pointillés (portée ${cannonRange()} cases autour d'un canon ou d'une Forteresse).`, ""); return; }
+      const id = st.grid[hover.y * st.N + hover.x];
+      if (!id) { setHint(`Visez un bloc adverse (portée ${cannonRange()} cases).`, ""); return; }
+      const t = st.blocks.get(id);
+      if (t.owner === st.cur) { setHint("C'est un de vos blocs.", "ko"); return; }
+      if (!shooterFor(st.cur, hover)) { setHint("Hors de portée de vos canons et Forteresses (ou ils ont déjà tiré ce tour).", "ko"); return; }
+      setHint(st.out[t.owner]
+        ? `Tir possible : les blocs de ${PLAYERS[t.owner].name} (éliminé) sont pris sans combat.`
+        : `Tir possible : votre force ${attackPower(st.cur)} contre sa défense ${defensePower(t.owner)}${attackPower(st.cur) === defensePower(t.owner) ? " (dé)" : ""}.`, "ok");
+      return;
+    }
+
+    if (st.cavMode) {
+      const sc = cavSelected();
+      if (!sc) { setHint("Mode cavalier : cliquez sur l'un de vos cavaliers (cercle sombre) pour le sélectionner.", ""); return; }
+      if (!hover) { setHint(`Cavalier : cliquez une case verte pour vous déplacer (${CONFIG.CAVALRY_MOVE} cases, sur votre couleur), ou un bloc adverse du carré en pointillés pour attaquer.`, ""); return; }
+      const k = hover.y * st.N + hover.x;
+      if (cavReach(sc).has(k)) { setHint("Déplacement possible.", "ok"); return; }
+      const id = st.grid[k];
+      if (id && st.blocks.get(id).owner !== st.cur) {
+        const t = st.blocks.get(id);
+        if (!cavTargetOk(sc, t, hover)) { setHint("Hors de portée du cavalier.", "ko"); return; }
+        setHint(st.out[t.owner]
+          ? `Charge possible : les blocs de ${PLAYERS[t.owner].name} (éliminé) sont pris sans combat.`
+          : `Charge possible : votre force ${attackPower(st.cur)} contre sa défense ${defensePower(t.owner)}${attackPower(st.cur) === defensePower(t.owner) ? " (dé)" : ""}.`, "ok");
+        return;
+      }
+      setHint("Case non atteignable : seulement vos cases, à 3 pas au plus.", "ko");
+      return;
+    }
+
+    if (!hover) { setHint("Survolez le plateau pour voir où poser le bloc.", ""); return; }
+    const a = anchor();
+    const v = validate(st.cur, a.x, a.y, a.w, a.h, sel);
+    if (!v.ok) { setHint(v.reason, "ko"); return; }
+    let msg = pending ? "Touchez encore pour confirmer la pose." : "Placement possible.";
+    const t = touchedOpponents(st.cur, a.x, a.y, a.w, a.h);
+    if (t.size) {
+      const g1 = attackPower(st.cur);
+      msg += " " + [...t].map(([o, ids]) => {
+        if (st.out[o]) return `${PLAYERS[o].name} (éliminé) : ses blocs seront pris sans combat`;
+        const g2 = defensePower(o);
+        const main = [...ids].some((id) => st.blocks.get(id).main === o) ? ", Capitale en jeu" : "";
+        return `Combat contre ${PLAYERS[o].name} (votre force ${g1}, sa défense ${g2}${g1 === g2 ? ", dé" : ""}${main})`;
+      }).join(" ; ") + ".";
+    }
+    setHint(msg, "ok");
+  }
+
+  /* =====================================================================
+     INTERACTIONS
+     ===================================================================== */
+  function rotate() {
+    if (busy()) return;
+    const d = pieceDims(sel);
+    if (d.w === d.h) return;
+    rot = !rot; pending = null;
+    renderPieces(); draw(); updateHint();
+  }
+  function selectPiece(i) {
+    if (busy() || !pieceOpen(i)) return;
+    sel = i; pending = null;
+    clearModes();
+    renderPieces(); draw(); updateHint();
+  }
+  function toggleDouble() {
+    if (busy() || !dblPossible()) return;
+    const maxM = 1 + st.vill[st.cur];
+    $("mult").value = String((multValue() % maxM) + 1);
+    pending = null;
+    renderPieces(); draw(); updateHint();
+  }
+
+  function cellFromEvent(e) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: clamp(Math.floor(((e.clientX - r.left) / r.width) * st.N), 0, st.N - 1),
+      y: clamp(Math.floor(((e.clientY - r.top) / r.height) * st.N), 0, st.N - 1),
+    };
+  }
+
+  function tryPlace() {
+    if (busy() || !hover) return;
+    const a = anchor();
+    const v = validate(st.cur, a.x, a.y, a.w, a.h, sel);
+    if (!v.ok) { SFX.bad(); setHint(v.reason, "ko"); return; }
+    hover = null;
+    placePiece(st.cur, a.x, a.y, a.w, a.h, sel);
+  }
+
+  canvas.addEventListener("pointermove", (e) => {
+    if (busy()) return;
+    hover = cellFromEvent(e);
+    draw(); updateHint();
+  });
+  canvas.addEventListener("pointerleave", (e) => {
+    if (e.pointerType !== "mouse") return;
+    hover = null; draw(); updateHint();
+  });
+  canvas.addEventListener("pointerdown", (e) => {
+    if (busy()) return;
+    hover = cellFromEvent(e);
+    draw(); updateHint();
+  });
+  canvas.addEventListener("pointerup", (e) => {
+    if (busy() || e.button === 2) return;
+    if (st.fireMode) { tryFire(cellFromEvent(e)); return; }
+    if (st.cavMode) { tryCav(cellFromEvent(e)); return; }
+    if (!hover) return;
+    if (e.pointerType === "mouse") { tryPlace(); return; }
+    // tactile : premier toucher = aperçu, second toucher au même endroit = pose
+    const a = anchor();
+    const key = a.x + "," + a.y + "," + a.w + "," + a.h;
+    if (pending === key) { pending = null; tryPlace(); }
+    else { pending = key; updateHint(); }
+  });
+
+  canvas.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    if (!st || busy()) return;
+    if (st.fireMode || st.cavMode) { clearModes(); renderAll(); } else rotate();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (!st || $("game").hidden || busy() || !$("modal").hidden) return;
+    if (e.target && e.target.tagName === "INPUT" && e.target.type !== "checkbox") return;
+    const k = e.key.toLowerCase();
+    if (k >= "1" && k <= String(PIECES.length)) selectPiece(Number(k) - 1);
+    else if (k === "r") rotate();
+    else if (k === "d") toggleDouble();
+    else if (k === "t") toggleFire();
+    else if (k === "c") toggleCav();
+    else if (k === "escape") { pending = null; hover = null; clearModes(); renderAll(); }
+  });
+
+  // bouton à confirmation en deux temps (évite les clics accidentels, sans boîte de dialogue)
+  function armed(btn, label, fn) {
+    const orig = btn.textContent;
+    let t = null;
+    const reset = () => { clearTimeout(t); delete btn.dataset.armed; btn.textContent = orig; btn.classList.remove("armed"); };
+    btn.addEventListener("click", () => {
+      if (btn.dataset.armed) { reset(); fn(); return; }
+      btn.dataset.armed = "1"; btn.textContent = label; btn.classList.add("armed");
+      t = setTimeout(reset, 3000);
+    });
+  }
+
+  $("help").addEventListener("change", draw);
+  $("rotate").addEventListener("click", rotate);
+  $("fire").addEventListener("click", toggleFire);
+  $("mult").addEventListener("change", () => { pending = null; if (st) { renderPieces(); draw(); updateHint(); } });
+  $("stuckQuit").addEventListener("click", () => {
+    if (!st || !st.stuck) return;
+    st.stuck = false;
+    $("stuck").hidden = true;
+    $("cavPop").hidden = true;
+    eliminate(st.cur, "a quitté la partie");
+    nextTurn();
+  });
+  $("stuckPass").addEventListener("click", () => {
+    if (!st || !st.stuck) return;
+    st.stuck = false;
+    $("stuck").hidden = true;
+    $("cavPop").hidden = true;
+    passTurn();
+  });
+  $("stuckPlay").addEventListener("click", () => {
+    if (!st || !st.stuck) return;
+    st.stuck = false;
+    $("stuck").hidden = true;
+    $("cavPop").hidden = true;
+    renderAll();
+  });
+  function closeCavPopup() {
+    if (!st || !st.cavPopup) return;
+    st.cavPopup = null;
+    $("cavPop").hidden = true;
+    if (st.stuck) showStuck(); else renderAll();
+  }
+  $("cavNext").addEventListener("click", closeCavPopup);
+  $("cav").addEventListener("click", toggleCav);
+  $("recGuard").addEventListener("click", () => recruit("guard"));
+  $("recVill").addEventListener("click", () => recruit("vill"));
+  armed($("pass"), "Confirmer ?", passTurn);
+  armed($("finish"), "Confirmer ?", () => { if (st && !st.over && !st.combat) endGame(); });
+  armed($("menu"), "Quitter ?", showSetup);
+
+  function showSetup() {
+    clearBot();
+    $("modal").hidden = true;
+    $("recruit").hidden = true;
+    $("stuck").hidden = true;
+    $("cavPop").hidden = true;
+    $("combat").hidden = true;
+    $("chestPop").hidden = true;
+    $("game").hidden = true;
+    $("setup").hidden = false;
+  }
+  function startGame(N, n) {
+    clearBot();
+    newGame(N, n);
+    $("setup").hidden = true;
+    $("modal").hidden = true;
+    $("recruit").hidden = true;
+    $("stuck").hidden = true;
+    $("cavPop").hidden = true;
+    $("combat").hidden = true;
+    $("chestPop").hidden = true;
+    $("game").hidden = false;
+    $("pieces").innerHTML = "";
+    lastW = 0;
+    layout();
+    renderAll();
+  }
+
+  $("start").addEventListener("click", () => {
+    const N = Number(document.querySelector('input[name="size"]:checked').value);
+    const n = Number(document.querySelector('input[name="players"]:checked').value);
+    document.querySelectorAll("#names .nm").forEach((row, i) => {
+      const v = row.querySelector("input").value.replace(/[<>&"`]/g, "").trim();
+      PLAYERS[i].bot = row.querySelector("select").value || null;     // null = humain, sinon "easy" ou "medium"
+      PLAYERS[i].name = v || (PLAYERS[i].bot ? `Ordi ${PLAYERS[i].label}` : PLAYERS[i].label);
+    });
+    startGame(N, n);
+  });
+
+  // n'affiche que les champs de prénom des joueurs présents
+  function syncNames() {
+    const n = Number(document.querySelector('input[name="players"]:checked').value);
+    document.querySelectorAll("#names .nm").forEach((row, i) => { row.hidden = i >= n; });
+  }
+  document.querySelectorAll('input[name="players"]').forEach((r) => r.addEventListener("change", syncNames));
+  syncNames();
+  document.querySelectorAll("#names .nm").forEach((row, i) => {
+    row.querySelector("select").addEventListener("change", (e) => {
+      row.querySelector("input").placeholder = e.target.value ? `Ordi ${PLAYERS[i].label}` : PLAYERS[i].label;
+    });
+  });
+
+  // textes de règles qui dépendent des réglages
+  const S = CONFIG.CANNON_SIDE;
+  const Z = (side) => 2 * (Math.floor(side / 2) + CONFIG.CANNON_RANGE_BONUS) + 1;
+  $("ruleChest").textContent =
+    `Chaque joueur a ${CONFIG.CHESTS_PER_PLAYER} coffres, à sa couleur. Il les ouvre en les touchant avec un de ses blocs (côté ou coin). ` +
+    `Chaque coffre contient ${plural(Math.max(...CONFIG.CHEST_CANONS), "canon")}${CONFIG.CHEST_VILLAGERS ? ` et ${CONFIG.CHEST_VILLAGERS} villageois` : ""}, et rien d'autre. Les coffres bloquent tout le monde.`;
+  $("ruleCannon").textContent =
+    `Le canon est une pièce 1×1 que l'on pose où l'on veut, sans toucher ses blocs. Chaque tour, il peut tirer sur un bloc adverse ` +
+    `dans le carré qui l'entoure (${Z(S[20])}×${Z(S[20])} cases en 20×20, ${Z(S[30])}×${Z(S[30])} en 30×30, ${Z(S[60])}×${Z(S[60])} en 60×60) : combat normal, et un tir manqué ne coûte rien. ` +
+    `Posé contre des blocs adverses, il les attaque sans risque : s'il perd, il reste à son propriétaire. ` +
+    `Si un adversaire pose un bloc contre lui, le canon se défend comme les autres blocs, et s'il perd, l'adversaire le prend. ` +
+    `Interdit : poser un canon à portée de la Capitale d'un adversaire (zone rouge).`;
+
+  $("again").addEventListener("click", () => startGame(lastSetup.N, lastSetup.n));
+  $("toMenu").addEventListener("click", showSetup);
+  $("viewBoard").addEventListener("click", () => { $("modal").hidden = true; });
+
+  /* =====================================================================
+     ADAPTATION À LA FENÊTRE ET AU THÈME
+     ===================================================================== */
+  new ResizeObserver(() => {
+    const w = $("boardCol").clientWidth;
+    if (w !== lastW) { lastW = w; layout(); }
+  }).observe($("boardCol"));
+  window.addEventListener("resize", layout);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", readTheme);
+  new MutationObserver(readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  readTheme();
+})();
+</script>
+</body>
+</html>
